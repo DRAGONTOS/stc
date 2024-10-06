@@ -4,7 +4,5 @@
       cmake
       gnumake
       ninja 
-      tomlplusplus
-      cpptoml
     ];
 }

@@ -1,16 +1,15 @@
-pkgname=RapidMenu-git
-_gitname=RapidMenu
-pkgver=0.2.4
+pkgname=stc-git
+_gitname=stc
+pkgver=0.1.2
 pkgrel=1
-pkgdesc="Utilize configuration files to create runner scripts."
-url="https://github.com/DRAGONTOS/RapidMenu"
+pkgdesc="Easily download collections and mods from steam."
+url="https://github.com/DRAGONTOS/stc"
 arch=('x86_64')
 license=('GPLv3')
-depends=('tomlplusplus' 'cpptoml')
 makedepends=('git' 'cmake' 'ninja')
-provides=('RapidMenu')
-conflicts=('RapidMenu')
-source=('git+https://github.com/DRAGONTOS/RapidMenu.git')
+provides=('stc')
+conflicts=('stc')
+source=('git+https://github.com/DRAGONTOS/stc.git')
 md5sums=('SKIP')
 
 prepare() {
