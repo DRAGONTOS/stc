@@ -85,6 +85,7 @@ int main(int argc, char **argv, char **envp) {
             if (argc == 7) {
             dir = ARGS[1+5];
             }
+
             try {
               getHttp(std::string {"https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid}, &cachesc);
             }
@@ -92,7 +93,7 @@ int main(int argc, char **argv, char **envp) {
               std::cout << meow;
               return 1;
             }
-            std::cout << collectionid << user << pass << gameid << dir;
+
             std::cout << "success1\n";
             break;
         }
@@ -105,6 +106,7 @@ int main(int argc, char **argv, char **envp) {
             if (argc == 5) {
             dir = ARGS[1+3];
             }
+
             try {
               getHttp(std::string {"https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid}, &cachesc);
             }
@@ -113,8 +115,6 @@ int main(int argc, char **argv, char **envp) {
               return 1;
             }
  
-            std::cout << collectionid << gameid << dir << '\n';
-
             std::cout << "success\n";
             break;
             } else {
