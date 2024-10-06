@@ -16,20 +16,20 @@
 // should be in an alphabatical order ^^^
 
 // clear buffers might not be needed
-void clearBuffer() {
-  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-}
-
-inline void checkIfExtractionFailed() {
-  if (!std::cin) {        // if previous extraction failed
-    if (std::cin.eof()) { // check if eof and if yes aborts the program
-      std::abort();
-    }
-
-    std::cin.clear(); // put std::cin back into normal mode
-    clearBuffer();    // remove bad input
-  }
-}
+// void clearBuffer() {
+//   std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+// }
+//
+// inline void checkIfExtractionFailed() {
+//   if (!std::cin) {        // if previous extraction failed
+//     if (std::cin.eof()) { // check if eof and if yes aborts the program
+//       std::abort();
+//     }
+//
+//     std::cin.clear(); // put std::cin back into normal mode
+//     clearBuffer();    // remove bad input
+//   }
+// }
 
 std::string woof(std::ifstream& meow){
   std::ostringstream nya;
@@ -44,10 +44,12 @@ LISTING COMMANDS:
 )#";
 
 // strings are kinda broken
-const std::string invalidvalue = "Invalid value in config: ";
-const std::string invalidconfig = "Not a valid config: ";
+const std::string invalidvalue = "Invalid value in config: \n";
+const std::string invalidconfig = "Not a valid config: \n";
 
 int main(int argc, char **argv, char **envp) {
+  std::cout << "Test\n";
+  std::cout << invalidvalue + invalidconfig;
 
   // need some cleaning in the future ata
   const char* userHome = getenv("HOME");

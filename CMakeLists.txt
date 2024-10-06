@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.19)
+cmake_minimum_required(VERSION 3.28.2)
 
 # Get version
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/props.json PROPS)
@@ -8,7 +8,7 @@ project(stc
   DESCRIPTION "Utilize configuration files to create runner scripts."
   VERSION ${VER})
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 
 # Add the path to the source files for stc
 file(GLOB_RECURSE STC_SOURCE_FILES "src/*.cpp")
@@ -17,14 +17,8 @@ file(GLOB_RECURSE STC_SOURCE_FILES "src/*.cpp")
 add_executable(stc ${STC_SOURCE_FILES})
 install(TARGETS stc DESTINATION bin)
 
-# Find and link against the tomlplusplus library
-find_package(tomlplusplus REQUIRED)
-target_link_libraries(stc PRIVATE tomlplusplus::tomlplusplus)
-
-
 # DEBIAN
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "DRAGONTOS")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libcpptoml-dev")
 set(CPACK_DEBIAN_PACKAGE_LICENSE "GPLv3")
 set(CPACK_DEBIAN_PACKAGE_DESCRIPTION ${DESCRIPTION})
 set(CPACK_DEBIAN_PACKAGE_RELEASE_DIST ON)
@@ -32,7 +26,6 @@ set(CPACK_GENERATOR DEBIAN)
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
 # RPM
 set(CPACK_PACKAGE_VENDOR "DRAGONTOS")
-set(CPACK_RPM_PACKAGE_REQUIRES "tomlplusplus-devel")
 set(CPACK_RPM_PACKAGE_LICENSE "GPLv3")
 set(CPACK_RPM_PACKAGE_DESCRIPTION ${DESCRIPTION})
 set(CPACK_RPM_FILE_NAME "RPM-DEFAULT")
