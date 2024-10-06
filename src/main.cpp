@@ -1,4 +1,3 @@
-#include <algorithm>
 #include <cctype>
 #include <cpptoml.h>
 #include <cstdio>
@@ -8,28 +7,9 @@
 #include <fstream>
 #include <ios>
 #include <iostream>
-#include <limits>
 #include <ostream>
-#include <stdexcept>
 #include "regex"
 #include <string>
-// should be in an alphabatical order ^^^
-
-// clear buffers might not be needed
-// void clearBuffer() {
-//   std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-// }
-//
-// inline void checkIfExtractionFailed() {
-//   if (!std::cin) {        // if previous extraction failed
-//     if (std::cin.eof()) { // check if eof and if yes aborts the program
-//       std::abort();
-//     }
-//
-//     std::cin.clear(); // put std::cin back into normal mode
-//     clearBuffer();    // remove bad input
-//   }
-// }
 
 std::string woof(std::ifstream& meow){
   std::ostringstream nya;
@@ -37,25 +17,23 @@ std::string woof(std::ifstream& meow){
   return nya.str();
 }
 
-const std::string USAGE = R"#(usage:  RapidMenu [flags] [<command> [args]]
+const std::string USAGE = R"#(usage:  Steam Collector [flags] [<command> [args]]
 LISTING COMMANDS:
-    -c:           To specify which config to use.
-    -b:           Make a executable out of a config.
+    -c:           Install a collection.
+    -m:           Install a specific mod.
 )#";
 
 // strings are kinda broken
-const std::string invalidvalue = "Invalid value in config: \n";
+const std::string invalidvalue  = "Invalid value in config: \n";
 const std::string invalidconfig = "Not a valid config: \n";
 
 int main(int argc, char **argv, char **envp) {
-  std::cout << "Test\n";
-  std::cout << invalidvalue + invalidconfig;
 
   // need some cleaning in the future ata
-  const char* userHome = getenv("HOME");
-  std::string userCache = std::string(userHome) + "/.cache/";
-  std::string cacheid = std::string(userCache) + "ids.txt";
-  std::string cachesc = std::string(userCache) + "sources.html";
+  const char* userHome  = getenv("HOME");
+  std::string userCache = std::string(userHome)   + "/.cache/";
+  std::string cacheid   = std::string(userCache)  + "ids.txt";
+  std::string cachesc   = std::string(userCache)  + "sources.html";
 
   std::string collectionid;
   std::string modid;
@@ -68,10 +46,10 @@ int main(int argc, char **argv, char **envp) {
   // Removes cache
   if (std::filesystem::exists(cacheid) &&
       std::filesystem::is_directory(cacheid)) {
-    int status = remove(std::string {cacheid}.c_str());
+    int status  = remove(std::string {cacheid}.c_str());
     int status2 = remove(std::string {cachesc}.c_str());
   } else {
-    int status = remove(std::string {cacheid}.c_str());
+    int status  = remove(std::string {cacheid}.c_str());
     int status2 = remove(std::string {cachesc}.c_str());
   }
 
@@ -87,53 +65,105 @@ int main(int argc, char **argv, char **envp) {
 
   // the args
   for (int i = 1; i < argc; ++i) {
-      std::string arg = argv[i];
+    std::string arg = argv[i];
+    if (arg.find('-') == 0) {
+        //collectionid
+        if (ARGS[i] == "-c") {
+          if (argc < 3 || argv[2][0] == '-') {
+              std::cerr << USAGE.c_str();
+              return 1;
+          }
 
-      if (ARGS[i] == "-ci") { // collection id
-       collectionid = ARGS[1+1];
-      std::cout << collectionid;
-      // should be done with libcurl in the future ata
-      system(std::string {"curl https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid + " -o " + cachesc}.c_str());
-      } else if (ARGS[i] == "-mi") {
-      modid = ARGS[1+1];
-      std::cout << modid;
-      }
+          if (argc == 6 || argc == 7) {
+              
+            collectionid  = ARGS[1+1];
+            user          = ARGS[1+2];
+            pass          = ARGS[1+3];
+            gameid        = ARGS[1+4];
 
-      if (ARGS[i+2] == "-u") { // user if required [OPTIONAL]
-        user = ARGS[i+3];
-        std::cout << user;
-      } else if (ARGS[i+2] == "-gi") { // game id
-        gameid = ARGS[i+3];
-        std::cout << gameid;
-        if (ARGS[i+4] == "-d") {
-          dir = ARGS[i+5];
-          std::cout << dir;
+            if (argc == 7) {
+            dir = ARGS[1+5];
+            }
+              
+            // should be done with libcurl in the future ata
+            system(std::string {"curl https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid + " -o " + cachesc}.c_str());
+
+            std::cout << collectionid << user << pass << gameid << dir;
+            std::cout << "success1\n";
+            break;
         }
-        break;
+            
+            if (argc == 4 || argc == 5) {
+
+            collectionid  = ARGS[1+1];
+            gameid        = ARGS[1+2];
+            
+            if (argc == 5) {
+            dir = ARGS[1+3];
+            }
+
+            // should be done with libcurl in the future ata
+            system(std::string {"curl https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid + " -o " + cachesc}.c_str());
+
+            std::cout << collectionid << gameid << dir;
+
+            std::cout << "success\n";
+            break;
+            } else {
+              std::cerr << USAGE;
+              return 1;
+            }
+        }
+
+        // modid
+        if (ARGS[i] == "-m") {
+          if (argc < 3 || argv[2][0] == '-') {
+              std::cerr << USAGE.c_str();
+              return 1;
+          }
+
+          if (argc == 6 || argc == 7) {
+              
+            modid  = ARGS[1+1];
+            user          = ARGS[1+2];
+            pass          = ARGS[1+3];
+            gameid        = ARGS[1+4];
+
+            if (argc == 7) {
+            dir = ARGS[1+5];
+            }
+              
+            std::cout << "success1\n";
+            break;
+          }
+
+          if (argc == 4 || argc == 5) {
+
+          modid  = ARGS[1+1];
+          gameid        = ARGS[1+2];
+          
+          if (argc == 5) {
+          dir = ARGS[1+3];
+          }
+
+          std::cout << "success\n";
+          break;
+          } else {
+            std::cerr << USAGE;
+            return 1;
+          }
+        } else {
+           std::cerr << USAGE;
+           return 1;
+        }
       }
+   }
 
-      if (ARGS[i+4] == "-p") { // pass [OPTIONAL]
-        pass = ARGS[i+5];
-        std::cout << pass;
-      }
-
-      if (ARGS[i+6] == "-gi") { // game id
-        gameid = ARGS[i+7];
-        std::cout << gameid;
-      }
-
-      if (ARGS[i+8] == "-d") { // download dir [OPTIONAL]
-        dir = ARGS[i+9];
-        std::cout << dir;
-      }
-
-
-    }
-
+  // regex and stuff (collectionid)
   if (!collectionid.empty()) {
     // Input and output file paths
-    std::string inputFilePath = cachesc;
-    std::string outputFilePath = cacheid;
+    std::string inputFilePath   = cachesc;
+    std::string outputFilePath  = cacheid;
 
     // Open the input file (source.html)
     std::ifstream inputFile(inputFilePath);
@@ -180,8 +210,11 @@ int main(int argc, char **argv, char **envp) {
     inputFile.close();
     outputFile.close();
 
+  // (modid)
   } else if (!modid.empty()) {
     std::string wpd = " +workshop_download_item " + gameid + " " + modid /*+ R"( \)"*/;
+    
+    // main command
     system(std::string {"sh ~/Steam/steamcmd.sh +force_install_dir " + dir + " +login " + user + pass + wpd + " +quit"}.c_str());
 
     return 1;
