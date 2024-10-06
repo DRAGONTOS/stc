@@ -5,6 +5,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include "includes/getHttp.h"
 #include <ios>
 #include <iostream>
 #include <ostream>
@@ -85,9 +86,7 @@ int main(int argc, char **argv, char **envp) {
             dir = ARGS[1+5];
             }
               
-            // should be done with libcurl in the future ata
-            system(std::string {"curl https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid + " -o " + cachesc}.c_str());
-
+            getHttp(std::string {"https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid}, &cachesc);
             std::cout << collectionid << user << pass << gameid << dir;
             std::cout << "success1\n";
             break;
@@ -102,9 +101,7 @@ int main(int argc, char **argv, char **envp) {
             dir = ARGS[1+3];
             }
 
-            // should be done with libcurl in the future ata
-            system(std::string {"curl https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid + " -o " + cachesc}.c_str());
-
+            getHttp(std::string {"https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid}, &cachesc);
             std::cout << collectionid << gameid << dir;
 
             std::cout << "success\n";
