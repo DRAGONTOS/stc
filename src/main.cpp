@@ -1,5 +1,3 @@
-#include "includes/getHttp.h"
-#include "regex"
 #include <cctype>
 #include <cpptoml.h>
 #include <cstdio>
@@ -11,6 +9,8 @@
 #include <iostream>
 #include <ostream>
 #include <string>
+#include "includes/getHttp.h"
+#include "regex"
 
 std::string woof(std::ifstream &meow) {
   std::ostringstream nya;
@@ -39,6 +39,8 @@ int main(int argc, char **argv, char **envp) {
   std::string gameid;
   std::string dir;
   dir = std::filesystem::current_path();
+
+  int ab = 0;
 
   // Removes cache
   if (std::filesystem::exists(cacheid) &&
@@ -82,6 +84,7 @@ int main(int argc, char **argv, char **envp) {
             dir = ARGS[1 + 5];
           }
 
+          ab = 0;
           try {
             getHttp(std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid}, &cachesc);
           } catch (std::string &meow) {
@@ -89,7 +92,7 @@ int main(int argc, char **argv, char **envp) {
             return 1;
           }
 
-          std::cout << "success1\n";
+          std::cout << "success\n";
           break;
         }
 
@@ -102,6 +105,7 @@ int main(int argc, char **argv, char **envp) {
             dir = ARGS[1 + 3];
           }
 
+          ab = 0;
           try {
             getHttp(std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid}, &cachesc);
           } catch (std::string &meow) {
@@ -135,7 +139,8 @@ int main(int argc, char **argv, char **envp) {
             dir = ARGS[1 + 5];
           }
 
-          std::cout << "success1\n";
+          ab = 1;
+          std::cout << "success\n";
           break;
         }
 
@@ -148,6 +153,7 @@ int main(int argc, char **argv, char **envp) {
             dir = ARGS[1 + 3];
           }
 
+          ab = 1;
           std::cout << "success\n";
           break;
         } else {
@@ -181,12 +187,12 @@ int main(int argc, char **argv, char **envp) {
     std::string line;
 
     // Process each line
-    while (std::getline(inputFile, line)) {
+  while (std::getline(inputFile, line)) {
       // grep-like behavior (only process lines containing the pattern with two
       // spaces)
       if (std::regex_search(line, grepRegex)) {
 
-        // sed 's/"><div class=.*//'
+     // sed 's/"><div class=.*//'
         std::size_t divPos = line.find("\"><div class=");
         if (divPos != std::string::npos) {
           line = line.substr(0, divPos); // Trim everything after '"><div class='
@@ -212,18 +218,27 @@ int main(int argc, char **argv, char **envp) {
     // Close the input and output files
     inputFile.close();
     outputFile.close();
+  }  
+  
+  //checks if a "\" is needed or not
+  std::ifstream idscount{cacheid};
+  int step = 0;
 
-    // (modid)
-  } else if (!modid.empty()) {
-    std::string wpd = " +workshop_download_item " + gameid + " " + modid /*+ R"( \)"*/;
-
-    // main command
-    system(std::string{"sh ~/Steam/steamcmd.sh +force_install_dir " + dir + " +login " + user + pass + wpd + " +quit"}.c_str());
-    return 1;
+  for (std::string line; std::getline(idscount, line); ) {
+      step++;
   }
+  std::string slash = (step == 2) ? R"( )": R"( \ )";
+  idscount.close();
 
   // main command
   std::ifstream ids{cacheid};
-  system(std::string{"sh ~/Steam/steamcmd.sh +force_install_dir " + dir + " +login " + user + pass + R"( \ )" + woof(ids)}.c_str());
+  std::string idsm = (ab == 1) ? R"( +workshop_download_item )" + gameid + " " + modid + " +quit": R"()";
+
+  system(std::string{"sh ~/Steam/steamcmd.sh +force_install_dir " + dir + " +login " + user + pass + slash + idsm + woof(ids)}.c_str());
+  
+  std::string mods = (!modid.empty()) ? "" : R"(Mods: )" + std::to_string(step -1) + "\n";
+  std::string colm = (ab == 1) ? R"(Mod)": R"(Collection)"; 
+  std::cout << "\n\n" + mods + colm + " has been downloaded too: " + dir + "\n";
+
   return 1;
 }
