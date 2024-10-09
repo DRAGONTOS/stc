@@ -19,15 +19,30 @@ std::string woof(std::ifstream &meow) {
 }
 
 const std::string USAGE = R"#(usage:  Steam Collector [flags] [<command> [args]]
-LISTING COMMANDS:
+LISTING FLAGS:
     -c:           Install a collection.
     -m:           Install a specific mod.
+    -h:           For the entire help msg.
+)#";
+
+const std::string HELP = R"#(usage:  Steam Collector [flags] [<command> [args]]
+LISTING FLAGS:
+    -c:           Install a collection.
+    -m:           Install a specific mod.
+    -h:           For the entire help msg.
+ 
+ LISTING ARGS:
+    1: Should be the collectionid/modid.
+    2: Could be the username if required.
+    3: Could be the password if required.
+    4: The dir to where you want to download the mods.
 )#";
 
 int main(int argc, char **argv, char **envp) {
 
   // need some cleaning in the future ata
   const char *userHome  = getenv("HOME");
+
   std::string userCache = std::string(userHome)   + "/.cache/";
   std::string cacheid   = std::string(userCache)  + "ids.txt";
   std::string cachesc   = std::string(userCache)  + "sources.html";
@@ -38,6 +53,7 @@ int main(int argc, char **argv, char **envp) {
   std::string pass;
   std::string gameid;
   std::string dir;
+
   dir = std::filesystem::current_path();
 
   int ab = 0;
@@ -66,6 +82,16 @@ int main(int argc, char **argv, char **envp) {
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
     if (arg.find('-') == 0) {
+      // help msg
+      if (ARGS[i] == "-h") {
+        if (argc < 3 || argv[2][0] == '-') {
+          std::cerr << HELP.c_str();
+          return 1;
+        }
+        std::cout << HELP;
+        return 1;
+      }
+
       // collectionid
       if (ARGS[i] == "-c") {
         if (argc < 3 || argv[2][0] == '-') {
@@ -116,7 +142,7 @@ int main(int argc, char **argv, char **envp) {
           std::cout << "success\n";
           break;
         } else {
-          std::cerr << USAGE;
+          std::cerr << HELP;
           return 1;
         }
       }
@@ -157,13 +183,16 @@ int main(int argc, char **argv, char **envp) {
           std::cout << "success\n";
           break;
         } else {
-          std::cerr << USAGE;
+          std::cerr << HELP;
           return 1;
         }
       } else {
         std::cerr << USAGE;
         return 1;
       }
+    } else {
+      std::cerr << USAGE;
+      return 1;
     }
   }
 
@@ -227,15 +256,18 @@ int main(int argc, char **argv, char **envp) {
   for (std::string line; std::getline(idscount, line); ) {
       step++;
   }
+
   std::string slash = (step == 2) ? R"( )": R"( \ )";
   idscount.close();
 
-  // main command
+  //gets the ids
   std::ifstream ids{cacheid};
   std::string idsm = (ab == 1) ? R"( +workshop_download_item )" + gameid + " " + modid + " +quit": R"()";
 
+  // main command
   system(std::string{"sh ~/Steam/steamcmd.sh +force_install_dir " + dir + " +login " + user + pass + slash + idsm + woof(ids)}.c_str());
   
+  // shows how much and what has downloaded
   std::string mods = (!modid.empty()) ? "" : R"(Mods: )" + std::to_string(step -1) + "\n";
   std::string colm = (ab == 1) ? R"(Mod)": R"(Collection)"; 
   std::cout << "\n\n" + mods + colm + " has been downloaded too: " + dir + "\n";
