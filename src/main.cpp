@@ -10,6 +10,7 @@
 #include <ostream>
 #include <string>
 #include "includes/getHttp.h"
+#include "includes/Strings.hpp"
 #include "regex"
 
 std::string woof(std::ifstream &meow) {
@@ -17,26 +18,6 @@ std::string woof(std::ifstream &meow) {
   nya << meow.rdbuf();
   return nya.str();
 }
-
-const std::string USAGE = R"#(usage:  Steam Collector [flags] [<command> [args]]
-LISTING FLAGS:
-    -c:           Install a collection.
-    -m:           Install a specific mod.
-    -h:           For the entire help msg.
-)#";
-
-const std::string HELP = R"#(usage:  Steam Collector [flags] [<command> [args]]
-LISTING FLAGS:
-    -c:           Install a collection.
-    -m:           Install a specific mod.
-    -h:           For the entire help msg.
- 
- LISTING ARGS:
-    1: Should be the collectionid/modid.
-    2: Could be the username if required.
-    3: Could be the password if required.
-    4: The dir to where you want to download the mods.
-)#";
 
 int main(int argc, char **argv, char **envp) {
 
@@ -85,7 +66,7 @@ int main(int argc, char **argv, char **envp) {
       // help msg
       if (ARGS[i] == "-h") {
         if (argc < 3 || argv[2][0] == '-') {
-          std::cerr << HELP.c_str();
+          std::cerr << HELP;
           return 1;
         }
         std::cout << HELP;
@@ -95,7 +76,7 @@ int main(int argc, char **argv, char **envp) {
       // collectionid
       if (ARGS[i] == "-c") {
         if (argc < 3 || argv[2][0] == '-') {
-          std::cerr << USAGE.c_str();
+          std::cerr << USAGE;
           return 1;
         }
 
@@ -150,7 +131,7 @@ int main(int argc, char **argv, char **envp) {
       // modid
       if (ARGS[i] == "-m") {
         if (argc < 3 || argv[2][0] == '-') {
-          std::cerr << USAGE.c_str();
+          std::cerr << USAGE;
           return 1;
         }
 
