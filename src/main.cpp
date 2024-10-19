@@ -5,7 +5,6 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
-#include <ios>
 #include <iostream>
 #include <ostream>
 #include <string>
@@ -42,11 +41,11 @@ int main(int argc, char **argv, char **envp) {
   // Removes cache
   if (std::filesystem::exists(cacheid) &&
       std::filesystem::is_directory(cacheid)) {
-    int status  = remove(std::string{cacheid}.c_str());
-    int status2 = remove(std::string{cachesc}.c_str());
+    std::filesystem::remove(cacheid);
+    std::filesystem::remove(cachesc);
   } else {
-    int status  = remove(std::string{cacheid}.c_str());
-    int status2 = remove(std::string{cachesc}.c_str());
+    std::filesystem::remove(cacheid);
+    std::filesystem::remove(cachesc);
   }
 
   std::vector<std::string> ARGS{argv, argv + argc};
