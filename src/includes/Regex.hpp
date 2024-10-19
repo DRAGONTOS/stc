@@ -2,6 +2,7 @@
 #define REGEX_H
 #include <string>
 
+// all the var's
 struct cmd {
 const char *userHome  = getenv("HOME");
 
@@ -16,9 +17,13 @@ std::string pass;
 std::string gameid;
 std::string dir;
 
-int ab = 0;
+int ab    = 0;
+int step  = 0;
+
+std::string slash;
 };
 
 // void Regex(const std::string& collectionid, const std::string& gameid, const std::string& cacheid, const std::string& cachesc);
 void Regex(cmd *inputCmd);
+void slashing(cmd *inputCmd);
 #endif

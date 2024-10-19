@@ -63,3 +63,15 @@ void Regex(cmd *inputCmd) {
     outputFile.close();
   }  
 }
+
+void slashing(cmd *inputCmd) {
+  //checks if a "\" is needed or not
+  std::ifstream idscount{inputCmd->cacheid};
+
+  for (std::string line; std::getline(idscount, line); ) {
+      inputCmd->step++;
+  }
+  
+  inputCmd->slash = (inputCmd->step == 2) ? R"( )": R"( \ )";
+  idscount.close();
+}

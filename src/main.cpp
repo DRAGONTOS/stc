@@ -19,11 +19,10 @@ std::string woof(std::ifstream &meow) {
 }
 
 int main(int argc, char **argv, char **envp) {
-
   // struct cmd
   cmd inputCmd;
-  inputCmd.dir = std::filesystem::current_path();
 
+  inputCmd.dir = std::filesystem::current_path();
   // Removes cache
   if (std::filesystem::exists(inputCmd.cacheid) &&
       std::filesystem::is_directory(inputCmd.cacheid)) {
@@ -164,27 +163,17 @@ int main(int argc, char **argv, char **envp) {
 
   // regex function
   Regex(&inputCmd);
-
-  //checks if a "\" is needed or not
-  std::ifstream idscount{inputCmd.cacheid};
-  int step = 0;
-
-  for (std::string line; std::getline(idscount, line); ) {
-      step++;
-  }
-  
-  std::string slash = (step == 2) ? R"( )": R"( \ )";
-  idscount.close();
+  slashing(&inputCmd);
 
   //gets the ids
   std::ifstream ids{inputCmd.cacheid};
   std::string idsm = (inputCmd.ab == 1) ? R"( +workshop_download_item )" + inputCmd.gameid + " " + inputCmd.modid + " +quit": R"()";
 
   // main command
-  system(std::string{"sh ~/Steam/steamcmd.sh +force_install_dir " + inputCmd.dir + " +login " + inputCmd.user + inputCmd.pass + slash + idsm + woof(ids)}.c_str());
+  system(std::string{"sh ~/Steam/steamcmd.sh +force_install_dir " + inputCmd.dir + " +login " + inputCmd.user + inputCmd.pass + inputCmd.slash + idsm + woof(ids)}.c_str());
   
   // shows how much and what has downloaded
-  std::string mods = (!inputCmd.modid.empty()) ? "" : R"(Mods: )" + std::to_string(step -1) + "\n";
+  std::string mods = (!inputCmd.modid.empty()) ? "" : R"(Mods: )" + std::to_string(inputCmd.step -1) + "\n";
   std::string colm = (inputCmd.ab == 1) ? R"(Mod)": R"(Collection)"; 
   std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd.dir + "\n";
 
