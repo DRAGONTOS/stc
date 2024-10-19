@@ -10,7 +10,7 @@
 #include <string>
 #include "includes/getHttp.hpp"
 #include "includes/Strings.hpp"
-#include "includes/regex.hpp"
+#include "includes/Regex.hpp"
 
 std::string woof(std::ifstream &meow) {
   std::ostringstream nya;
@@ -20,32 +20,18 @@ std::string woof(std::ifstream &meow) {
 
 int main(int argc, char **argv, char **envp) {
 
-  // need some cleaning in the future ata
-  const char *userHome  = getenv("HOME");
-
-  std::string usercache = std::string(userHome)   + "/.cache/";
-  std::string cacheid   = std::string(usercache)  + "ids.txt";
-  std::string cachesc   = std::string(usercache)  + "sources.html";
-
-  std::string collectionid;
-  std::string modid;
-  std::string user = "anonymous";
-  std::string pass;
-  std::string gameid;
-  std::string dir;
-
-  dir = std::filesystem::current_path();
-
-  int ab = 0;
+  // struct cmd
+  cmd inputCmd;
+  inputCmd.dir = std::filesystem::current_path();
 
   // Removes cache
-  if (std::filesystem::exists(cacheid) &&
-      std::filesystem::is_directory(cacheid)) {
-    std::filesystem::remove(cacheid);
-    std::filesystem::remove(cachesc);
+  if (std::filesystem::exists(inputCmd.cacheid) &&
+      std::filesystem::is_directory(inputCmd.cacheid)) {
+    std::filesystem::remove(inputCmd.cacheid);
+    std::filesystem::remove(inputCmd.cachesc);
   } else {
-    std::filesystem::remove(cacheid);
-    std::filesystem::remove(cachesc);
+    std::filesystem::remove(inputCmd.cacheid);
+    std::filesystem::remove(inputCmd.cachesc);
   }
 
   std::vector<std::string> ARGS{argv, argv + argc};
@@ -81,18 +67,18 @@ int main(int argc, char **argv, char **envp) {
 
         if (argc == 6 || argc == 7) {
 
-          collectionid  = ARGS[1 + 1];
-          user          = ARGS[1 + 2];
-          pass          = ARGS[1 + 3];
-          gameid        = ARGS[1 + 4];
+          inputCmd.collectionid  = ARGS[1 + 1];
+          inputCmd.user          = ARGS[1 + 2];
+          inputCmd.pass          = ARGS[1 + 3];
+          inputCmd.gameid        = ARGS[1 + 4];
 
           if (argc == 7) {
-            dir = ARGS[1 + 5];
+            inputCmd.dir = ARGS[1 + 5];
           }
 
-          ab = 0;
+          inputCmd.ab = 0;
           try {
-            getHttp(std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid}, &cachesc);
+            getHttp(std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid}, &inputCmd.cachesc);
           } catch (std::string &meow) {
             std::cout << meow;
             return 1;
@@ -104,16 +90,16 @@ int main(int argc, char **argv, char **envp) {
 
         if (argc == 4 || argc == 5) {
 
-          collectionid  = ARGS[1 + 1];
-          gameid        = ARGS[1 + 2];
+          inputCmd.collectionid  = ARGS[1 + 1];
+          inputCmd.gameid        = ARGS[1 + 2];
 
           if (argc == 5) {
-            dir = ARGS[1 + 3];
+            inputCmd.dir = ARGS[1 + 3];
           }
 
-          ab = 0;
+          inputCmd.ab = 0;
           try {
-            getHttp(std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + collectionid}, &cachesc);
+            getHttp(std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid}, &inputCmd.cachesc);
           } catch (std::string &meow) {
             std::cout << meow;
             return 1;
@@ -136,30 +122,30 @@ int main(int argc, char **argv, char **envp) {
 
         if (argc == 6 || argc == 7) {
 
-          modid   = ARGS[1 + 1];
-          user    = ARGS[1 + 2];
-          pass    = ARGS[1 + 3];
-          gameid  = ARGS[1 + 4];
+          inputCmd.modid   = ARGS[1 + 1];
+          inputCmd.user    = ARGS[1 + 2];
+          inputCmd.pass    = ARGS[1 + 3];
+          inputCmd.gameid  = ARGS[1 + 4];
 
           if (argc == 7) {
-            dir = ARGS[1 + 5];
+            inputCmd.dir = ARGS[1 + 5];
           }
 
-          ab = 1;
+          inputCmd.ab = 1;
           std::cout << "success\n";
           break;
         }
 
         if (argc == 4 || argc == 5) {
 
-          modid   = ARGS[1 + 1];
-          gameid  = ARGS[1 + 2];
+          inputCmd.modid   = ARGS[1 + 1];
+          inputCmd.gameid  = ARGS[1 + 2];
 
           if (argc == 5) {
-            dir = ARGS[1 + 3];
+            inputCmd.dir = ARGS[1 + 3];
           }
 
-          ab = 1;
+          inputCmd.ab = 1;
           std::cout << "success\n";
           break;
         } else {
@@ -176,10 +162,11 @@ int main(int argc, char **argv, char **envp) {
     }
   }
 
-  regex({collectionid}, {gameid}, {cacheid}, {cachesc});
+  // regex function
+  Regex(&inputCmd);
 
   //checks if a "\" is needed or not
-  std::ifstream idscount{cacheid};
+  std::ifstream idscount{inputCmd.cacheid};
   int step = 0;
 
   for (std::string line; std::getline(idscount, line); ) {
@@ -187,19 +174,19 @@ int main(int argc, char **argv, char **envp) {
   }
   
   std::string slash = (step == 2) ? R"( )": R"( \ )";
-    idscount.close();
+  idscount.close();
 
   //gets the ids
-  std::ifstream ids{cacheid};
-  std::string idsm = (ab == 1) ? R"( +workshop_download_item )" + gameid + " " + modid + " +quit": R"()";
+  std::ifstream ids{inputCmd.cacheid};
+  std::string idsm = (inputCmd.ab == 1) ? R"( +workshop_download_item )" + inputCmd.gameid + " " + inputCmd.modid + " +quit": R"()";
 
   // main command
-  system(std::string{"sh ~/Steam/steamcmd.sh +force_install_dir " + dir + " +login " + user + pass + slash + idsm + woof(ids)}.c_str());
+  system(std::string{"sh ~/Steam/steamcmd.sh +force_install_dir " + inputCmd.dir + " +login " + inputCmd.user + inputCmd.pass + slash + idsm + woof(ids)}.c_str());
   
   // shows how much and what has downloaded
-  std::string mods = (!modid.empty()) ? "" : R"(Mods: )" + std::to_string(step -1) + "\n";
-  std::string colm = (ab == 1) ? R"(Mod)": R"(Collection)"; 
-  std::cout << "\n\n" + mods + colm + " has been downloaded too: " + dir + "\n";
+  std::string mods = (!inputCmd.modid.empty()) ? "" : R"(Mods: )" + std::to_string(step -1) + "\n";
+  std::string colm = (inputCmd.ab == 1) ? R"(Mod)": R"(Collection)"; 
+  std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd.dir + "\n";
 
   return 1;
 }

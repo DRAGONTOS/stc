@@ -2,20 +2,20 @@
 #include <cpptoml.h>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <fstream>
 #include <ios>
 #include <iostream>
 #include <ostream>
 #include <string>
 #include "regex"
+#include "includes/Regex.hpp"
 
 // regex and stuff (collectionid)
-void regex(std::string collectionid, std::string gameid, std::string cacheid, std::string cachesc) {
-  if (!collectionid.empty()) {
+void Regex(cmd *inputCmd) {
+  if (!inputCmd->collectionid.empty()) {
     // Input and output file paths
-    std::string inputFilePath   = cachesc;
-    std::string outputFilePath  = cacheid;
+    std::string inputFilePath   = inputCmd->cachesc;
+    std::string outputFilePath  = inputCmd->cacheid;
 
     // Open the input file (source.html)
     std::ifstream inputFile(inputFilePath);
@@ -47,7 +47,7 @@ void regex(std::string collectionid, std::string gameid, std::string cacheid, st
           line = line.substr(idPos + 3); // Trim everything before 'id=' and keep the ID
         }
 
-        line = "+workshop_download_item " + gameid + " " + line;
+        line = "+workshop_download_item " + inputCmd->gameid + " " + line;
 
         line += " \\";
 
