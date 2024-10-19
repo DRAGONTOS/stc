@@ -9,9 +9,9 @@
 #include <iostream>
 #include <ostream>
 #include <string>
-#include "includes/getHttp.h"
+#include "includes/getHttp.hpp"
 #include "includes/Strings.hpp"
-#include "regex"
+#include "includes/regex.hpp"
 
 std::string woof(std::ifstream &meow) {
   std::ostringstream nya;
@@ -24,9 +24,9 @@ int main(int argc, char **argv, char **envp) {
   // need some cleaning in the future ata
   const char *userHome  = getenv("HOME");
 
-  std::string userCache = std::string(userHome)   + "/.cache/";
-  std::string cacheid   = std::string(userCache)  + "ids.txt";
-  std::string cachesc   = std::string(userCache)  + "sources.html";
+  std::string usercache = std::string(userHome)   + "/.cache/";
+  std::string cacheid   = std::string(usercache)  + "ids.txt";
+  std::string cachesc   = std::string(usercache)  + "sources.html";
 
   std::string collectionid;
   std::string modid;
@@ -177,59 +177,8 @@ int main(int argc, char **argv, char **envp) {
     }
   }
 
-  // regex and stuff (collectionid)
-  if (!collectionid.empty()) {
-    // Input and output file paths
-    std::string inputFilePath   = cachesc;
-    std::string outputFilePath  = cacheid;
+  regex({collectionid}, {gameid}, {cacheid}, {cachesc});
 
-    // Open the input file (source.html)
-    std::ifstream inputFile(inputFilePath);
-    std::ofstream outputFile(outputFilePath, std::ios::app);
-
-    if (!inputFile.is_open() && !outputFile.is_open()) {
-      std::cerr << "Unable to open file";
-      return 1;
-    }
-
-    std::regex grepRegex(R"(<div class="workshopItemPreviewHolder  ")");
-
-    std::string line;
-
-    // Process each line
-  while (std::getline(inputFile, line)) {
-      // grep-like behavior (only process lines containing the pattern with two
-      // spaces)
-      if (std::regex_search(line, grepRegex)) {
-
-     // sed 's/"><div class=.*//'
-        std::size_t divPos = line.find("\"><div class=");
-        if (divPos != std::string::npos) {
-          line = line.substr(0, divPos); // Trim everything after '"><div class='
-        }
-
-        // sed 's/.*id=//'
-        std::size_t idPos = line.find("id=");
-        if (idPos != std::string::npos) {
-          line = line.substr(idPos + 3); // Trim everything before 'id=' and keep the ID
-        }
-
-        line = "+workshop_download_item " + gameid + " " + line;
-
-        line += " \\";
-
-        outputFile << line << std::endl;
-      }
-    }
-
-    // Step 6: Write "+quit" at the end of the output file
-    outputFile << "+quit" << std::endl;
-
-    // Close the input and output files
-    inputFile.close();
-    outputFile.close();
-  }  
-  
   //checks if a "\" is needed or not
   std::ifstream idscount{cacheid};
   int step = 0;
@@ -237,9 +186,9 @@ int main(int argc, char **argv, char **envp) {
   for (std::string line; std::getline(idscount, line); ) {
       step++;
   }
-
+  
   std::string slash = (step == 2) ? R"( )": R"( \ )";
-  idscount.close();
+    idscount.close();
 
   //gets the ids
   std::ifstream ids{cacheid};
