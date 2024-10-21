@@ -1,22 +1,5 @@
-#include <atomic>
 #include <iostream>
-#include <string>
-#include <thread>
-#include "includes/Regex.hpp"
-#include <cctype>
-#include <cpptoml.h>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <iostream>
-#include <ostream>
-#include <string>
-#include <iostream>
-#include <cstdio>
-#include <memory>
 #include <stdexcept>
-#include <string>
-#include <unistd.h> 
 #include <thread>
 #include <chrono>
 #include <atomic>
@@ -40,7 +23,7 @@ void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& ru
         }
 
         // checks for timed out ones.
-        if (line.find("Time") != std::string::npos) {
+        if (line.find("Timeout") != std::string::npos) {
             inputCmd->timedout++;
         }
 
@@ -90,13 +73,15 @@ void maincommand(cmd *inputCmd) {
       std::cerr << "\nError: " << e.what() << std::endl; 
   }
 
-  // shows how much and what has downloaded
-  std::string total = (!inputCmd->modid.empty()) ? "Total: 1" : "Total: " + std::to_string(inputCmd->step -1) + "\n";
-  std::string mods = total  + "\n"
-                            + "Finished: " + std::to_string(inputCmd->successes +1) + "\n"
-                            + "Timed out: " + std::to_string(inputCmd->timedout) + "\n"
-                            + "Errored: " + std::to_string(inputCmd->errors) + "\n" + "\n";
-
+  // mod or collection?
+  std::string total = (!inputCmd->modid.empty()) ? "Total: 1" : "Total: " + std::to_string(inputCmd->slashtp -1) + "\n";
   std::string colm = (inputCmd->ab == 1) ? R"(Mod)": R"(Collection)"; 
+
+  // shows how much and what has downloaded
+  std::string mods = total  + "\n"
+                            + "Finished: "  + std::to_string(inputCmd->successes +1)  + "\n"
+                            + "Timed out: " + std::to_string(inputCmd->timedout)      + "\n"
+                            + "Errored: "   + std::to_string(inputCmd->errors)        + "\n" + "\n";
+
   std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd->dir + "\n";
 }

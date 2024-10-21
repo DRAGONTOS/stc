@@ -67,7 +67,7 @@ void slashing(cmd *inputCmd) {
 
     // Count the number of lines
     while (std::getline(inputStream, line)) {
-        inputCmd->step++; 
+        inputCmd->slashtp++; 
     }
-  inputCmd->slash = (inputCmd->step == 2) ? R"( )": R"( \ )";
+  inputCmd->slash = (inputCmd->slashtp == 2) ? R"( )": R"( \ )";
 }
