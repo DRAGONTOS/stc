@@ -10,6 +10,8 @@ std::string usercache = std::string(userHome)   + "/.cache/";
 std::string cacheid   = std::string(usercache)  + "ids.txt";
 std::string cachesc   = std::string(usercache)  + "sources.html";
 
+std::string ids;
+
 std::string collectionid;
 std::string modid;
 std::string user = "anonymous";
@@ -21,9 +23,13 @@ int ab    = 0;
 int step  = 0;
 
 std::string slash;
+
+int successes = 0;
+int timedout  = 0;
+int errors    = 0;
+int totalmeow = 0;
 };
 
-// void Regex(const std::string& collectionid, const std::string& gameid, const std::string& cacheid, const std::string& cachesc);
 void Regex(cmd *inputCmd);
 void slashing(cmd *inputCmd);
 #endif

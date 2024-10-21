@@ -11,6 +11,7 @@
 #include "includes/getHttp.hpp"
 #include "includes/Strings.hpp"
 #include "includes/Regex.hpp"
+#include "includes/maincommand.hpp"
 
 std::string woof(std::ifstream &meow) {
   std::ostringstream nya;
@@ -83,7 +84,6 @@ int main(int argc, char **argv, char **envp) {
             return 1;
           }
 
-          std::cout << "success\n";
           break;
         }
 
@@ -104,7 +104,6 @@ int main(int argc, char **argv, char **envp) {
             return 1;
           }
 
-          std::cout << "success\n";
           break;
         } else {
           std::cerr << HELP;
@@ -131,7 +130,6 @@ int main(int argc, char **argv, char **envp) {
           }
 
           inputCmd.ab = 1;
-          std::cout << "success\n";
           break;
         }
 
@@ -145,7 +143,6 @@ int main(int argc, char **argv, char **envp) {
           }
 
           inputCmd.ab = 1;
-          std::cout << "success\n";
           break;
         } else {
           std::cerr << HELP;
@@ -161,21 +158,9 @@ int main(int argc, char **argv, char **envp) {
     }
   }
 
-  // regex function
   Regex(&inputCmd);
   slashing(&inputCmd);
-
-  //gets the ids
-  std::ifstream ids{inputCmd.cacheid};
-  std::string idsm = (inputCmd.ab == 1) ? R"( +workshop_download_item )" + inputCmd.gameid + " " + inputCmd.modid + " +quit": R"()";
-
-  // main command
-  system(std::string{"sh ~/Steam/steamcmd.sh +force_install_dir " + inputCmd.dir + " +login " + inputCmd.user + inputCmd.pass + inputCmd.slash + idsm + woof(ids)}.c_str());
-  
-  // shows how much and what has downloaded
-  std::string mods = (!inputCmd.modid.empty()) ? "" : R"(Mods: )" + std::to_string(inputCmd.step -1) + "\n";
-  std::string colm = (inputCmd.ab == 1) ? R"(Mod)": R"(Collection)"; 
-  std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd.dir + "\n";
+  maincommand(&inputCmd);
 
   return 1;
 }
