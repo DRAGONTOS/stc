@@ -2,7 +2,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <filesystem>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -14,8 +13,6 @@
 int main(int argc, char **argv, char **envp) {
   // struct cmd
   cmd inputCmd;
-  inputCmd.dir = std::filesystem::current_path();
-
   std::vector<std::string> ARGS{argv, argv + argc};
   for (int i = 0; i < argc; ++i) {
     ARGS[i] = std::string{argv[i]};

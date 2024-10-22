@@ -1,5 +1,7 @@
+#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -22,6 +24,7 @@ void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& ru
         // checks for success.
         if (line.find("Success") != std::string::npos) {
             inputCmd->successes++;
+            inputCmd->sucids += line + "\n";
         }
 
         // checks for timed out ones.
@@ -58,8 +61,10 @@ void showLoadingCursor(std::atomic<bool>& running) {
 void maincommand(cmd *inputCmd) {
   std::string idsm = R"( +workshop_download_item )" + inputCmd->gameid + " " + inputCmd->modid + " +quit";
 
+  std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamapps");
+
   std::string maincommand2 = std::string{"sh ~/Steam/steamcmd.sh +force_install_dir "
-     + inputCmd->dir 
+     + std::string(inputCmd->userHome) + "/.cache"
      + " +login " 
      + inputCmd->user 
      + ((inputCmd->pass.empty()) ? "" : inputCmd->pass)  
@@ -87,6 +92,16 @@ void maincommand(cmd *inputCmd) {
     + "Finished: "  + std::to_string(inputCmd->successes)     + "\n"
     + "Timed out: " + std::to_string(inputCmd->timedout)      + "\n"
     + "Errored: "   + std::to_string(inputCmd->errors)        + "\n" + "\n";
+
+    // mod names
+    std::istringstream inputStream(inputCmd->sucids);
+    std::string line;
+
+    while (std::getline(inputStream, line)) {
+        inputCmd->slashtp++; 
+        Modname(inputCmd, line);
+        filerestort(inputCmd); 
+    }
 
   std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd->dir + "\n";
 }

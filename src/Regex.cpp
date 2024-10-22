@@ -1,3 +1,6 @@
+#include <filesystem>
+#include <iostream>
+#include <ostream>
 #include <string>
 #include <sstream> 
 #include "regex"
@@ -47,4 +50,61 @@ void Regex(cmd *inputCmd) {
     while (std::getline(inputStream, line)) {
         inputCmd->slashtp++; 
     }
+}
+
+void filerestort(cmd *inputCmd) {
+  std::filesystem::path steamdir  = std::string(inputCmd->userHome) + "/.cache/steamapps/workshop/content/" + inputCmd->gameid + "/" + inputCmd->idnumber;
+  std::filesystem::path modname   = inputCmd->dir + "/" + inputCmd->idname;
+
+  // renames and moves the files.
+  try {
+      if (std::filesystem::exists(steamdir)) {
+          if (std::filesystem::exists(modname)) {
+              std::filesystem::remove_all(modname); 
+          }
+          std::filesystem::rename(steamdir, modname);
+      } else {
+          std::cerr << "Error: The directory " << steamdir << " does not exist." << std::endl;
+      }
+  } catch (const std::filesystem::filesystem_error& e) {
+      std::cerr << "Filesystem error: " << e.what() << std::endl;
+  } catch (const std::exception& e) {
+      std::cerr << "Error: " << e.what() << std::endl;
+  }
+}
+
+void Modname(cmd *inputCmd, std::string input) {
+  if (!inputCmd->sucids.empty()) {
+    std::regex downloadItemRegex(R"(Downloaded item (\d+))");
+
+    std::smatch match;
+    if (std::regex_search(input, match, downloadItemRegex)) {
+        std::string downloadItemNumber = match[1].str();
+        inputCmd->idnumber = downloadItemNumber;
+    }
+
+    std::istringstream inputStream(inputCmd->source);
+    
+    std::regex grepRegex("\"id\":\"" + inputCmd->idnumber + "\",\"title\":\"");
+    std::string line;
+
+    while (std::getline(inputStream, line)) {
+
+        if (std::regex_search(line, grepRegex)) {
+
+            std::size_t divPos = line.find("\",\"description\":");
+            if (divPos != std::string::npos) {
+                line = line.substr(0, divPos); // Trim everything after '"><div class='
+            }
+
+            std::string idPrefix = "\",\"title\":\""; // The prefix to search for
+            std::size_t idPos = line.find(idPrefix);
+            if (idPos != std::string::npos) {
+                line = line.substr(idPos + idPrefix.length()); // Keep everything after "id="
+            }
+
+            inputCmd->idname = line;
+        }
+    }
+  }
 }
