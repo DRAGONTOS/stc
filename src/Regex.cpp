@@ -1,5 +1,3 @@
-#include <fstream>
-#include <iostream>
 #include <string>
 #include <sstream> 
 #include "regex"
@@ -41,9 +39,7 @@ void Regex(cmd *inputCmd) {
         // Step 6: Write "+quit" at the end of the output buffer
         inputCmd->ids += "+quit\n";
     }
-}
 
-void slashing(cmd *inputCmd) {    
     std::istringstream inputStream(inputCmd->ids);
     std::string line;
 
@@ -51,5 +47,4 @@ void slashing(cmd *inputCmd) {
     while (std::getline(inputStream, line)) {
         inputCmd->slashtp++; 
     }
-  inputCmd->slash = (inputCmd->slashtp == 2) ? R"( )": R"( \ )";
 }

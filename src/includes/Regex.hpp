@@ -30,5 +30,4 @@ int totalmeow = 0;
 };
 
 void Regex(cmd *inputCmd);
-void slashing(cmd *inputCmd);
 #endif

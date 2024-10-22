@@ -142,7 +142,6 @@ int main(int argc, char **argv, char **envp) {
 
   // main functions
   Regex(&inputCmd);
-  slashing(&inputCmd);
   maincommand(&inputCmd);
 
   return 1;

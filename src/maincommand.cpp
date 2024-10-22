@@ -1,5 +1,7 @@
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <string>
 #include <thread>
 #include <chrono>
 #include <atomic>
@@ -30,6 +32,9 @@ void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& ru
         // checks for errors.
         if (line.find("ERROR!") != std::string::npos) {
             inputCmd->errors++;
+            // tmp fix for errors.
+            std::ofstream meow{"/home/rander/.cache/errors.txt"};
+            meow << "start:\n" + line; 
         }
 
         inputCmd->totalmeow++;
@@ -54,13 +59,12 @@ void maincommand(cmd *inputCmd) {
   std::string idsm = (inputCmd->ab == 1) ? R"( +workshop_download_item )" + inputCmd->gameid + " " + inputCmd->modid + " +quit": R"()";
 
   std::string maincommand2 = std::string{"sh ~/Steam/steamcmd.sh +force_install_dir "
-                           + inputCmd->dir 
-                           + " +login " 
-                           + inputCmd->user 
-                           + inputCmd->pass 
-                           + inputCmd->slash
-                           + idsm
-                           + inputCmd->ids}.c_str();
+     + inputCmd->dir 
+     + " +login " 
+     + inputCmd->user 
+     + ((inputCmd->pass.empty()) ? "" : inputCmd->pass)  
+     + " "
+     + ((inputCmd->ab == 1) ? idsm: inputCmd->ids)}.c_str();
 
   try {
       std::atomic<bool> running(true); 
@@ -78,10 +82,11 @@ void maincommand(cmd *inputCmd) {
   std::string colm = (inputCmd->ab == 1) ? R"(Mod)": R"(Collection)"; 
 
   // shows how much and what has downloaded
-  std::string mods = total  + "\n"
-                            + "Finished: "  + std::to_string(inputCmd->successes +1)  + "\n"
-                            + "Timed out: " + std::to_string(inputCmd->timedout)      + "\n"
-                            + "Errored: "   + std::to_string(inputCmd->errors)        + "\n" + "\n";
+  std::string mods = total  
+    + "\n"
+    + "Finished: "  + std::to_string(inputCmd->successes)     + "\n"
+    + "Timed out: " + std::to_string(inputCmd->timedout)      + "\n"
+    + "Errored: "   + std::to_string(inputCmd->errors)        + "\n" + "\n";
 
   std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd->dir + "\n";
 }
