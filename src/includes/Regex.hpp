@@ -16,7 +16,7 @@ std::string pass;
 std::string gameid;
 std::string dir;
 
-int ab = 0;
+bool ab = false;
 
 // slashing
 int slashtp  = 0;

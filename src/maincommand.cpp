@@ -56,7 +56,7 @@ void showLoadingCursor(std::atomic<bool>& running) {
 }
 
 void maincommand(cmd *inputCmd) {
-  std::string idsm = (inputCmd->ab == 1) ? R"( +workshop_download_item )" + inputCmd->gameid + " " + inputCmd->modid + " +quit": R"()";
+  std::string idsm = R"( +workshop_download_item )" + inputCmd->gameid + " " + inputCmd->modid + " +quit";
 
   std::string maincommand2 = std::string{"sh ~/Steam/steamcmd.sh +force_install_dir "
      + inputCmd->dir 
@@ -64,7 +64,7 @@ void maincommand(cmd *inputCmd) {
      + inputCmd->user 
      + ((inputCmd->pass.empty()) ? "" : inputCmd->pass)  
      + " "
-     + ((inputCmd->ab == 1) ? idsm: inputCmd->ids)}.c_str();
+     + ((inputCmd->ab == true) ? idsm: inputCmd->ids)}.c_str();
 
   try {
       std::atomic<bool> running(true); 
@@ -78,8 +78,8 @@ void maincommand(cmd *inputCmd) {
   }
 
   // mod or collection?
-  std::string total = (!inputCmd->modid.empty()) ? "Total: 1" : "Total: " + std::to_string(inputCmd->slashtp -1) + "\n";
-  std::string colm = (inputCmd->ab == 1) ? R"(Mod)": R"(Collection)"; 
+  std::string total = (inputCmd->ab == true) ? "Total: 1" : "Total: " + std::to_string(inputCmd->slashtp -1) + "\n";
+  std::string colm  = (inputCmd->ab == true) ? R"(Mod)"   : R"(Collection)"; 
 
   // shows how much and what has downloaded
   std::string mods = total  

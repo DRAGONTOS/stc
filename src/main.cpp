@@ -58,7 +58,6 @@ int main(int argc, char **argv, char **envp) {
             inputCmd.dir = ARGS[1 + 5];
           }
 
-          inputCmd.ab = 0;
           try {
             getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid});
           } catch (std::string &meow) {
@@ -78,7 +77,6 @@ int main(int argc, char **argv, char **envp) {
             inputCmd.dir = ARGS[1 + 3];
           }
 
-          inputCmd.ab = 0;
           try {
             getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid});
           } catch (std::string &meow) {
@@ -111,7 +109,7 @@ int main(int argc, char **argv, char **envp) {
             inputCmd.dir = ARGS[1 + 5];
           }
 
-          inputCmd.ab = 1;
+          inputCmd.ab = true;
           break;
         }
 
@@ -124,7 +122,7 @@ int main(int argc, char **argv, char **envp) {
             inputCmd.dir = ARGS[1 + 3];
           }
 
-          inputCmd.ab = 1;
+          inputCmd.ab = true;
           break;
         } else {
           std::cerr << HELP;
