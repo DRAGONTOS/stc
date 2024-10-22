@@ -70,7 +70,7 @@ void maincommand(cmd *inputCmd) {
       running = false; 
       cursorThread.join(); 
   } catch (const std::runtime_error& e) {
-      std::cerr << "\nError: " << e.what() << std::endl; 
+      std::cerr << "\nError: " << e.what() << "\n"; 
   }
 
   // mod or collection?

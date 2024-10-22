@@ -1,5 +1,6 @@
 #ifndef GETHTTP_H
 #define GETHTTP_H
 #include <string>
-void getHttp(std::string url, std::string *outputfile);
+#include "Regex.hpp"
+void getHttp(cmd *inputCmd, std::string url);
 #endif

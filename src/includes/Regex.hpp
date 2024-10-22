@@ -4,14 +4,9 @@
 
 // all the var's
 struct cmd {
-// legacy
-const char *userHome  = getenv("HOME");
-std::string usercache = std::string(userHome)   + "/.cache/";
-std::string cacheid   = std::string(usercache)  + "ids.txt";
-std::string cachesc   = std::string(usercache)  + "sources.html";
-
-// unsure
+// buffers
 std::string ids;
+std::string source;
 
 // what the args need 
 std::string collectionid;

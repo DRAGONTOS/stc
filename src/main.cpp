@@ -1,38 +1,20 @@
 #include <cctype>
-#include <cpptoml.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
-#include <fstream>
 #include <iostream>
-#include <ostream>
 #include <string>
+#include <vector>
 #include "includes/getHttp.hpp"
 #include "includes/Strings.hpp"
 #include "includes/Regex.hpp"
 #include "includes/maincommand.hpp"
 
-std::string woof(std::ifstream &meow) {
-  std::ostringstream nya;
-  nya << meow.rdbuf();
-  return nya.str();
-}
-
 int main(int argc, char **argv, char **envp) {
   // struct cmd
   cmd inputCmd;
-
   inputCmd.dir = std::filesystem::current_path();
-  // Removes cache
-  if (std::filesystem::exists(inputCmd.cacheid) &&
-      std::filesystem::is_directory(inputCmd.cacheid)) {
-    std::filesystem::remove(inputCmd.cacheid);
-    std::filesystem::remove(inputCmd.cachesc);
-  } else {
-    std::filesystem::remove(inputCmd.cacheid);
-    std::filesystem::remove(inputCmd.cachesc);
-  }
 
   std::vector<std::string> ARGS{argv, argv + argc};
   for (int i = 0; i < argc; ++i) {
@@ -78,7 +60,7 @@ int main(int argc, char **argv, char **envp) {
 
           inputCmd.ab = 0;
           try {
-            getHttp(std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid}, &inputCmd.cachesc);
+            getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid});
           } catch (std::string &meow) {
             std::cout << meow;
             return 1;
@@ -98,7 +80,7 @@ int main(int argc, char **argv, char **envp) {
 
           inputCmd.ab = 0;
           try {
-            getHttp(std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid}, &inputCmd.cachesc);
+            getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid});
           } catch (std::string &meow) {
             std::cout << meow;
             return 1;
@@ -158,6 +140,7 @@ int main(int argc, char **argv, char **envp) {
     }
   }
 
+  // main functions
   Regex(&inputCmd);
   slashing(&inputCmd);
   maincommand(&inputCmd);

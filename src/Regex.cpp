@@ -8,23 +8,14 @@
 // regex and stuff (collectionid)
 void Regex(cmd *inputCmd) {
     if (!inputCmd->collectionid.empty()) {
-        // Input and output file paths
-        std::string inputFilePath = inputCmd->cachesc; // Path to the input file
-
-        // Open the input file
-        std::ifstream inputFile(inputFilePath);
-
-        // Check if the input file is open
-        if (!inputFile.is_open()) {
-            throw std::runtime_error("Unable to open file: " + inputFilePath);
-        }
+        std::istringstream inputStream(inputCmd->source);
 
         // Regex to search for the desired pattern
         std::regex grepRegex(R"(<div class="workshopItemPreviewHolder  )");
         std::string line;
 
         // Process each line from the input file
-        while (std::getline(inputFile, line)) {
+        while (std::getline(inputStream, line)) {
             // grep-like behavior (only process lines containing the pattern with two spaces)
             if (std::regex_search(line, grepRegex)) {
                 // sed 's/"><div class=.*//'
@@ -49,15 +40,6 @@ void Regex(cmd *inputCmd) {
 
         // Step 6: Write "+quit" at the end of the output buffer
         inputCmd->ids += "+quit\n";
-
-        // Store the output back in the cmd structure (or handle it as needed)
-        // inputCmd->ids = outputBuffer.str(); // Store output in cacheid
-
-        // Close the input file
-        inputFile.close();
-
-        // Optionally print the output for verification
-        // std::cout << inputCmd->ids; // Print output buffer content
     }
 }
 
