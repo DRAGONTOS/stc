@@ -24,7 +24,6 @@ void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& ru
         if (line.find("Success") != std::string::npos) {
             inputCmd->successes++;
             inputCmd->sucids.push_back( line + "\n");
-            std::cout << "pushed success to array\n";
         }
 
         // checks for timed out ones.
