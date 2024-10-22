@@ -1,7 +1,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -24,7 +23,8 @@ void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& ru
         // checks for success.
         if (line.find("Success") != std::string::npos) {
             inputCmd->successes++;
-            inputCmd->sucids += line + "\n";
+            inputCmd->sucids.push_back( line + "\n");
+            std::cout << "pushed success to array\n";
         }
 
         // checks for timed out ones.
@@ -93,15 +93,14 @@ void maincommand(cmd *inputCmd) {
     + "Timed out: " + std::to_string(inputCmd->timedout)      + "\n"
     + "Errored: "   + std::to_string(inputCmd->errors)        + "\n" + "\n";
 
-    // mod names
-    std::istringstream inputStream(inputCmd->sucids);
-    std::string line;
-
-    while (std::getline(inputStream, line)) {
-        inputCmd->slashtp++; 
-        Modname(inputCmd, line);
-        filerestort(inputCmd); 
+    //start the threads
+    for(size_t nya{0}; nya < inputCmd->sucids.size(); ++nya){
+      inputCmd->slashtp++; 
+      std::thread meowT {Modname, inputCmd, nya};
+      meowT.detach();
     }
-
+  std::cout << "waiting for threads to finish >.<\n";
+  while(inputCmd->threadsCompleted != inputCmd->sucids.size()){}
+  std::cout << "threads finished!\n";
   std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd->dir + "\n";
 }

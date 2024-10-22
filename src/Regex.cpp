@@ -52,9 +52,9 @@ void Regex(cmd *inputCmd) {
     }
 }
 
-void filerestort(cmd *inputCmd) {
-  std::filesystem::path steamdir  = std::string(inputCmd->userHome) + "/.cache/steamapps/workshop/content/" + inputCmd->gameid + "/" + inputCmd->idnumber;
-  std::filesystem::path modname   = inputCmd->dir + "/" + inputCmd->idname;
+void filerestort(cmd *inputCmd, std::string idnumber, std::string idname) {
+  std::filesystem::path steamdir  = std::string(inputCmd->userHome) + "/.cache/steamapps/workshop/content/" + inputCmd->gameid + "/" + idnumber;
+  std::filesystem::path modname   = inputCmd->dir + "/" + idname;
 
   // renames and moves the files.
   try {
@@ -63,29 +63,38 @@ void filerestort(cmd *inputCmd) {
               std::filesystem::remove_all(modname); 
           }
           std::filesystem::rename(steamdir, modname);
+          inputCmd->threadsCompleted++;
       } else {
           std::cerr << "Error: The directory " << steamdir << " does not exist." << std::endl;
+          inputCmd->threadsCompleted++;
+
       }
   } catch (const std::filesystem::filesystem_error& e) {
       std::cerr << "Filesystem error: " << e.what() << std::endl;
+      inputCmd->threadsCompleted++;
+
   } catch (const std::exception& e) {
       std::cerr << "Error: " << e.what() << std::endl;
+      inputCmd->threadsCompleted++;
+
   }
 }
 
-void Modname(cmd *inputCmd, std::string input) {
+void Modname(cmd *inputCmd, size_t index) {
+  std::string idnumber;
+  std::string idname;
   if (!inputCmd->sucids.empty()) {
     std::regex downloadItemRegex(R"(Downloaded item (\d+))");
 
     std::smatch match;
-    if (std::regex_search(input, match, downloadItemRegex)) {
+    if (std::regex_search(inputCmd->sucids[index], match, downloadItemRegex)) {
         std::string downloadItemNumber = match[1].str();
-        inputCmd->idnumber = downloadItemNumber;
+        idnumber = downloadItemNumber;
     }
 
     std::istringstream inputStream(inputCmd->source);
     
-    std::regex grepRegex("\"id\":\"" + inputCmd->idnumber + "\",\"title\":\"");
+    std::regex grepRegex("\"id\":\"" + idnumber + "\",\"title\":\"");
     std::string line;
 
     while (std::getline(inputStream, line)) {
@@ -103,8 +112,9 @@ void Modname(cmd *inputCmd, std::string input) {
                 line = line.substr(idPos + idPrefix.length()); // Keep everything after "id="
             }
 
-            inputCmd->idname = line;
+            idname = line;
         }
     }
+    filerestort(inputCmd, idnumber, idname);
   }
 }
