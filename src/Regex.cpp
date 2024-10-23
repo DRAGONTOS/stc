@@ -48,7 +48,7 @@ void Regex(cmd *inputCmd) {
 
     // Count the number of lines
     while (std::getline(inputStream, line)) {
-        inputCmd->slashtp++; 
+        inputCmd->totalmods++; 
     }
 }
 

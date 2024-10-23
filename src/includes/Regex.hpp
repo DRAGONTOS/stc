@@ -19,9 +19,8 @@ std::string dir;
 
 bool ab = false;
 
-// slashing
-int slashtp  = 0;
-std::string slash;
+// total mods
+int totalmods = 0;
 
 // counter
 std::string sucids;

@@ -83,7 +83,7 @@ void maincommand(cmd *inputCmd) {
   }
 
   // mod or collection?
-  std::string total = (inputCmd->ab == true) ? "Total: 1" : "Total: " + std::to_string(inputCmd->slashtp -1) + "\n";
+  std::string total = (inputCmd->ab == true) ? "Total: 1" : "Total: " + std::to_string(inputCmd->totalmods -1) + "\n";
   std::string colm  = (inputCmd->ab == true) ? R"(Mod)"   : R"(Collection)"; 
 
   // shows how much and what has downloaded
@@ -98,7 +98,7 @@ void maincommand(cmd *inputCmd) {
     std::string line;
 
     while (std::getline(inputStream, line)) {
-        inputCmd->slashtp++; 
+        inputCmd->totalmods++; 
         Modname(inputCmd, line);
         filerestort(inputCmd); 
     }
