@@ -1,7 +1,7 @@
 #ifndef REGEX_H
 #define REGEX_H
 #include <string>
-
+#include <vector>
 // all the var's
 struct cmd {
 const char* userHome  = getenv("HOME");
@@ -19,22 +19,20 @@ std::string dir;
 
 bool ab = false;
 
-// slashing
-int slashtp  = 0;
-std::string slash;
+// total mods
+int totalmods = 0;
 
-// counter
-std::string sucids;
-std::string idnumber;
-std::string idname;
+// Modnamestuff
+std::vector<std::string> sucids;
 
 int successes = 0;
 int timedout  = 0;
 int errors    = 0;
 int totalmeow = 0;
+
+size_t threadsCompleted = 0;
 };
 
 void Regex(cmd *inputCmd);
-void filerestort(cmd *inputCmd);
-void Modname(cmd *inputCmd, std::string input);
+void Modname(cmd *inputCmd, size_t index);
 #endif

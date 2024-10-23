@@ -1,7 +1,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <thread>
@@ -24,7 +23,7 @@ void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& ru
         // checks for success.
         if (line.find("Success") != std::string::npos) {
             inputCmd->successes++;
-            inputCmd->sucids += line + "\n";
+            inputCmd->sucids.push_back( line + "\n");
         }
 
         // checks for timed out ones.
@@ -39,8 +38,6 @@ void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& ru
             std::ofstream meow{"/home/rander/.cache/errors.txt"};
             meow << "start:\n" + line; 
         }
-
-        inputCmd->totalmeow++;
     }
 
     running = false; 
@@ -83,7 +80,7 @@ void maincommand(cmd *inputCmd) {
   }
 
   // mod or collection?
-  std::string total = (inputCmd->ab == true) ? "Total: 1" : "Total: " + std::to_string(inputCmd->slashtp -1) + "\n";
+  std::string total = (inputCmd->ab == true) ? "Total: 1" : "Total: " + std::to_string(inputCmd->totalmods -1) + "\n";
   std::string colm  = (inputCmd->ab == true) ? R"(Mod)"   : R"(Collection)"; 
 
   // shows how much and what has downloaded
@@ -93,15 +90,13 @@ void maincommand(cmd *inputCmd) {
     + "Timed out: " + std::to_string(inputCmd->timedout)      + "\n"
     + "Errored: "   + std::to_string(inputCmd->errors)        + "\n" + "\n";
 
-    // mod names
-    std::istringstream inputStream(inputCmd->sucids);
-    std::string line;
-
-    while (std::getline(inputStream, line)) {
-        inputCmd->slashtp++; 
-        Modname(inputCmd, line);
-        filerestort(inputCmd); 
+    //start the threads
+    for(size_t nya{0}; nya < inputCmd->sucids.size(); ++nya){
+      inputCmd->totalmods++; 
+      std::thread meowT {Modname, inputCmd, nya};
+      meowT.detach();
     }
 
+  while(inputCmd->threadsCompleted != inputCmd->sucids.size()){}
   std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd->dir + "\n";
 }
