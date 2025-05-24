@@ -8,7 +8,6 @@ Easily download collections and mods from steam.
 - cmake
 - libarchive
 - ninja
-- steamcmd
 
 # Installing
 
