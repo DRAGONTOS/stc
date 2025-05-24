@@ -6,6 +6,8 @@ string(JSON VER GET ${PROPS} version)
 
 # find curl
 find_package(CURL REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBARCHIVE REQUIRED libarchive)
 project(stc
   DESCRIPTION "Easily download collections and mods from steam."
   VERSION ${VER})
@@ -22,15 +24,14 @@ file(GLOB_RECURSE STC_SOURCE_FILES "src/*.cpp")
 
 # add compiler flags
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-03")
+set(CMAKE_CXX_FLAGS_RELEASE "-02")
 
 # Add the executable target for stc
 add_executable(stc ${STC_SOURCE_FILES})
 install(TARGETS stc DESTINATION bin)
 
-# add curl libraries
-target_link_libraries(stc PRIVATE ${CURL_LIBRARIES})
-target_include_directories(stc PRIVATE ${CURL_INCLUDE_DIRS})
+target_link_libraries(stc PRIVATE ${CURL_LIBRARIES} ${LIBARCHIVE_LIBRARIES})
+target_include_directories(stc PRIVATE ${LIBARCHIVE_INCLUDE_DIRS} ${CURL_INCLUDE_DIRS})
 
 # DEBIAN
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "DRAGONTOS")

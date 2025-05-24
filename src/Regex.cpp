@@ -52,6 +52,7 @@ void Regex(cmd *inputCmd) {
     }
 }
 
+// renames modid to modname gathered from the html's metedata
 void filerestort(cmd *inputCmd, std::string idnumber, std::string idname) {
   std::filesystem::path steamdir  = std::string(inputCmd->userHome) + "/.cache/steamapps/workshop/content/" + inputCmd->gameid + "/" + idnumber;
   std::filesystem::path modname   = inputCmd->dir + "/" + idname;
