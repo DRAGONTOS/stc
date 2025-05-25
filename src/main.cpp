@@ -106,7 +106,13 @@ int main(int argc, char **argv, char **envp) {
             inputCmd.dir = ARGS[1 + 5];
           }
 
-          inputCmd.ab = true;
+          try {
+            getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.modid});
+          } catch (std::string &meow) {
+            std::cout << meow;
+            return 1;
+          }
+
           break;
         }
 
@@ -119,7 +125,13 @@ int main(int argc, char **argv, char **envp) {
             inputCmd.dir = ARGS[1 + 3];
           }
 
-          inputCmd.ab = true;
+          try {
+            getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.modid});
+          } catch (std::string &meow) {
+            std::cout << meow;
+            return 1;
+          }
+
           break;
         } else {
           std::cerr << HELP;

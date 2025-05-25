@@ -17,8 +17,6 @@ std::string pass;
 std::string gameid;
 std::string dir;
 
-bool ab = false;
-
 // total mods
 int totalmods = 0;
 

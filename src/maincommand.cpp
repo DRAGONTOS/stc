@@ -136,7 +136,7 @@ void maincommand(cmd *inputCmd) {
      + inputCmd->user 
      + ((inputCmd->pass.empty()) ? "" : inputCmd->pass)  
      + " "
-     + ((inputCmd->ab == true) ? idsm: inputCmd->ids)}.c_str();
+     + ((inputCmd->collectionid.empty()) ? idsm: inputCmd->ids)}.c_str();
 
   try {
       std::atomic<bool> running(true); 
@@ -150,8 +150,8 @@ void maincommand(cmd *inputCmd) {
   }
 
   // mod or collection?
-  std::string total = (inputCmd->ab == true) ? "Total: 1" : "Total: " + std::to_string(inputCmd->totalmods -1) + "\n";
-  std::string colm  = (inputCmd->ab == true) ? R"(Mod)"   : R"(Collection)"; 
+  std::string total = (inputCmd->collectionid.empty()) ? "Total: 1" : "Total: " + std::to_string(inputCmd->totalmods -1) + "\n";
+  std::string colm  = (inputCmd->collectionid.empty()) ? R"(Mod)"   : R"(Collection)"; 
 
   // shows how much and what has downloaded
   std::string mods = total  
@@ -160,13 +160,21 @@ void maincommand(cmd *inputCmd) {
     + "Timed out: " + std::to_string(inputCmd->timedout)      + "\n"
     + "Errored: "   + std::to_string(inputCmd->errors)        + "\n" + "\n";
 
-    //start the threads
-    for(size_t nya{0}; nya < inputCmd->sucids.size(); ++nya){
-      inputCmd->totalmods++; 
-      std::thread meowT {Modname, inputCmd, nya};
-      meowT.detach();
+    if (!inputCmd->collectionid.empty()) {
+     //start the threads
+        std::cout << "maos" << std::endl;
+        for(size_t nya{0}; nya < inputCmd->sucids.size(); ++nya){
+            inputCmd->totalmods++; 
+            std::thread meowT {Modname, inputCmd, nya};
+            meowT.detach();
+        }
+        while(inputCmd->threadsCompleted != inputCmd->sucids.size()){}
+    } else {
+        std::cout << "maos" << std::endl;
+        for(size_t nya{0}; nya < inputCmd->sucids.size(); ++nya) {
+            inputCmd->totalmods++;
+            Modname(inputCmd, nya);  // Process directly instead of in thread
+        }
     }
-
-  while(inputCmd->threadsCompleted != inputCmd->sucids.size()){}
-  std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd->dir + "\n";
+    std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd->dir + "\n";
 }

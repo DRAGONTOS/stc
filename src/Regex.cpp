@@ -8,7 +8,6 @@
 
 // regex and stuff (collectionid)
 void Regex(cmd *inputCmd) {
-    if (!inputCmd->collectionid.empty()) {
         std::istringstream inputStream(inputCmd->source);
 
         // Regex to search for the desired pattern
@@ -41,19 +40,18 @@ void Regex(cmd *inputCmd) {
 
         // Step 6: Write "+quit" at the end of the output buffer
         inputCmd->ids += "+quit\n";
-    }
 
-    std::istringstream inputStream(inputCmd->ids);
-    std::string line;
+    std::istringstream inputStreamids(inputCmd->ids);
+    std::string lineids;
 
     // Count the number of lines
-    while (std::getline(inputStream, line)) {
+    while (std::getline(inputStreamids, lineids)) {
         inputCmd->totalmods++; 
     }
 }
 
 // renames modid to modname gathered from the html's metedata
-void filerestort(cmd *inputCmd, std::string idnumber, std::string idname) {
+void filerestortthreaded(cmd *inputCmd, std::string idnumber, std::string idname) {
   std::filesystem::path steamdir  = std::string(inputCmd->userHome) + "/.cache/steamapps/workshop/content/" + inputCmd->gameid + "/" + idnumber;
   std::filesystem::path modname   = inputCmd->dir + "/" + idname;
 
@@ -80,9 +78,32 @@ void filerestort(cmd *inputCmd, std::string idnumber, std::string idname) {
   }
 }
 
+// void filerestort(cmd *inputCmd) {
+void filerestort(cmd *inputCmd, std::string idnumber, std::string idname) {
+  std::filesystem::path steamdir  = std::string(inputCmd->userHome) + "/.cache/steamapps/workshop/content/" + inputCmd->gameid + "/" + idnumber;
+  std::filesystem::path modname   = inputCmd->dir + "/" + idname;
+
+  // renames and moves the files.
+  try {
+      if (std::filesystem::exists(steamdir)) {
+          if (std::filesystem::exists(modname)) {
+              std::filesystem::remove_all(modname); 
+          }
+          std::filesystem::rename(steamdir, modname);
+      } else {
+          std::cerr << "Error: The directory " << steamdir << " does not exist." << std::endl;
+      }
+  } catch (const std::filesystem::filesystem_error& e) {
+      std::cerr << "Filesystem error: " << e.what() << std::endl;
+  } catch (const std::exception& e) {
+      std::cerr << "Error: " << e.what() << std::endl;
+  }
+}
+
 void Modname(cmd *inputCmd, size_t index) {
   std::string idnumber;
   std::string idname;
+    // std::cout << std::string(inputCmd->source) << std::endl;
   if (!inputCmd->sucids.empty()) {
     std::regex downloadItemRegex(R"(Downloaded item (\d+))");
 
@@ -93,27 +114,50 @@ void Modname(cmd *inputCmd, size_t index) {
     }
 
     std::istringstream inputStream(inputCmd->source);
-    
-    std::regex grepRegex("\"id\":\"" + idnumber + "\",\"title\":\"");
-    std::string line;
+    if (!inputCmd->collectionid.empty()) {
+        std::regex grepRegex("\"id\":\"" + idnumber + "\",\"title\":\"");
+        std::string line;
+        while (std::getline(inputStream, line)) {
 
-    while (std::getline(inputStream, line)) {
+            if (std::regex_search(line, grepRegex)) {
 
+                std::size_t divPos = line.find("\",\"description\":");
+                if (divPos != std::string::npos) {
+                    line = line.substr(0, divPos); // Trim everything after '"><div class='
+                }
+
+                std::string idPrefix = "\",\"title\":\""; // The prefix to search for
+                std::size_t idPos = line.find(idPrefix);
+                if (idPos != std::string::npos) {
+                    line = line.substr(idPos + idPrefix.length()); // Keep everything after "id="
+                }
+                idname = line;
+            }
+        }
+        filerestortthreaded(inputCmd, idnumber, idname);
+    } else {
+        std::regex grepRegex("Workshop::");
+        std::string line;
+        while (std::getline(inputStream, line)) {
         if (std::regex_search(line, grepRegex)) {
 
-            std::size_t divPos = line.find("\",\"description\":");
-            if (divPos != std::string::npos) {
-                line = line.substr(0, divPos); // Trim everything after '"><div class='
+            std::size_t titleStart = line.find("<title>");
+            if (titleStart != std::string::npos) {
+                std::size_t titleEnd = line.find("</title>", titleStart);
+                if (titleEnd != std::string::npos) {
+                    std::string fullTitle = line.substr(titleStart + 7, titleEnd - (titleStart + 7));
+                    
+                    std::size_t workshopPos = fullTitle.find("Workshop::");
+                    if (workshopPos != std::string::npos) {
+                        idname = fullTitle.substr(workshopPos + 10); // 10 is length of "Workshop::"
+                        
+                        idname.erase(idname.find_last_not_of(" \t\n\r\">") + 1);
+                    }
+                }
             }
-
-            std::string idPrefix = "\",\"title\":\""; // The prefix to search for
-            std::size_t idPos = line.find(idPrefix);
-            if (idPos != std::string::npos) {
-                line = line.substr(idPos + idPrefix.length()); // Keep everything after "id="
-            }
-            idname = line;
         }
     }
-    filerestort(inputCmd, idnumber, idname);
-  }
+        filerestort(inputCmd, idnumber, idname);
+    }
+    }
 }
