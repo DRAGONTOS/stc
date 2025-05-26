@@ -2,12 +2,17 @@
 
 Easily download collections and mods from steam.
 
+# NOTICE
+
+Debian might not work!!
+
 # Requirements
 
 - curl
 - cmake
 - libarchive
 - ninja
+- pkg-config
 
 # Installing
 
@@ -37,8 +42,10 @@ sudo dpkg -i *.deb
 ```
 
 Using PKGBUILD:
+Dont forget to enable multilib repo
 
 ```
+sudo pacman -S lib32-glibc lib32-gcc-libs
 makepkg -si PKGBUILD
 ```
 

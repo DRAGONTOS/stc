@@ -4,7 +4,6 @@
 #include <iostream>
 #include <archive.h>
 #include <archive_entry.h>
-#include <istream>
 #include <ostream>
 #include <stdexcept>
 #include <sys/stat.h>  // for mkdir()
@@ -15,8 +14,6 @@
 #include "includes/Regex.hpp"
 #include "includes/getHttp.hpp"
 #include <tar.h>
-#include <zlib.h>
-
 
 void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& running) {
     char temp[128];
@@ -106,7 +103,6 @@ void setup(const std::string& dirname) {
     std::string steamdir    = dirname + "/Steam";
     std::string downloaddir = std::string(userHome) + "/.cache/steamcmd_linux.tar.gz";
     std::string moddir      = dirname + "/mods";
-
 
     // checks if the steamdir exists and or if steamcmd is installed or not
     if (steamexists(steamdir)) {

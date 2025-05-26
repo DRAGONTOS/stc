@@ -5,9 +5,10 @@ file(READ ${CMAKE_CURRENT_SOURCE_DIR}/props.json PROPS)
 string(JSON VER GET ${PROPS} version)
 
 # find curl
-find_package(CURL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBARCHIVE REQUIRED libarchive)
+pkg_check_modules(CURL REQUIRED libcurl)
+
 project(stc
   DESCRIPTION "Easily download collections and mods from steam."
   VERSION ${VER})
