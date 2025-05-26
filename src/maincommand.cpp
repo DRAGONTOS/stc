@@ -102,12 +102,12 @@ void extractTarGz(const std::string& file, const std::string& outputDir) {
 
 //setup for steamcmd
 void setup(const std::string& dirname) {
-    const char* userHome  = getenv("HOME");
-    std::string steamdir = dirname + "/Steam";
+    const char* userHome    = getenv("HOME");
+    std::string steamdir    = dirname + "/Steam";
     std::string downloaddir = std::string(userHome) + "/.cache/steamcmd_linux.tar.gz";
+    std::string moddir      = dirname + "/mods";
 
-    if (mkdir(dirname.c_str(), 0777) == 0) {
-    } else {}
+
     // checks if the steamdir exists and or if steamcmd is installed or not
     if (steamexists(steamdir)) {
         } else {
@@ -115,6 +115,10 @@ void setup(const std::string& dirname) {
                 downloadFile("https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz", downloaddir);
                 extractTarGz(downloaddir, std::string(userHome) + "/.local/share/stc/Steam");
             } catch (std::string &meow) {}
+    }
+
+    // Creates the default mods folder 
+    if (mkdir(moddir.c_str(), 0777) == 0) {
     }
 }
 
@@ -126,6 +130,11 @@ void maincommand(cmd *inputCmd) {
 
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamapps");
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamcmd_linux.tar.gz");
+
+  // sets dir to default mods folder if dir is empty.
+  if (inputCmd->dir.empty()) {
+    inputCmd->dir = std::string(inputCmd->userHome) + "/.local/share/stc/mods";
+  }
 
   std::string maincommand2 = std::string{"sh " 
      + std::string(inputCmd->userHome) 
