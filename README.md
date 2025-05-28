@@ -42,7 +42,7 @@ sudo dpkg -i *.deb
 ```
 
 Using PKGBUILD:
-Dont forget to enable multilib repo
+(Dont forget to enable multilib repo)
 
 ```
 sudo pacman -S lib32-glibc lib32-gcc-libs

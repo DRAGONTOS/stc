@@ -115,48 +115,37 @@ void Modname(cmd *inputCmd, size_t index) {
 
     std::istringstream inputStream(inputCmd->source);
     if (!inputCmd->collectionid.empty()) {
-        std::regex grepRegex("\"id\":\"" + idnumber + "\",\"title\":\"");
         std::string line;
-        while (std::getline(inputStream, line)) {
 
-            if (std::regex_search(line, grepRegex)) {
-
-                std::size_t divPos = line.find("\",\"description\":");
-                if (divPos != std::string::npos) {
-                    line = line.substr(0, divPos); // Trim everything after '"><div class='
-                }
-
-                std::string idPrefix = "\",\"title\":\""; // The prefix to search for
-                std::size_t idPos = line.find(idPrefix);
-                if (idPos != std::string::npos) {
-                    line = line.substr(idPos + idPrefix.length()); // Keep everything after "id="
+        try {
+            std::string searchPattern = "\"id\":\"" + idnumber + "\",\"title\":\"";
+            size_t titlePos = inputCmd->source.find(searchPattern);
+            
+            if (titlePos != std::string::npos) {
+                size_t titleStart = titlePos + searchPattern.length();
+                size_t titleEnd = inputCmd->source.find("\"", titleStart);
+                
+                if (titleEnd != std::string::npos) {
+                    line = inputCmd->source.substr(titleStart, titleEnd - titleStart);
                 }
                 idname = line;
             }
+        } catch (...) {
+            std::cerr << "Error parsing mod data" << std::endl;
         }
         filerestortthreaded(inputCmd, idnumber, idname);
     } else {
-        std::regex grepRegex("Workshop::");
-        std::string line;
-        while (std::getline(inputStream, line)) {
-        if (std::regex_search(line, grepRegex)) {
-
-            std::size_t titleStart = line.find("<title>");
-            if (titleStart != std::string::npos) {
-                std::size_t titleEnd = line.find("</title>", titleStart);
-                if (titleEnd != std::string::npos) {
-                    std::string fullTitle = line.substr(titleStart + 7, titleEnd - (titleStart + 7));
-                    
-                    std::size_t workshopPos = fullTitle.find("Workshop::");
-                    if (workshopPos != std::string::npos) {
-                        idname = fullTitle.substr(workshopPos + 10); // 10 is length of "Workshop::"
-                        
-                        idname.erase(idname.find_last_not_of(" \t\n\r\">") + 1);
+        std::istringstream iss(inputCmd->source);
+        for (std::string htmlLine; std::getline(iss, htmlLine); ) {
+            if (htmlLine.find("<title>") != std::string::npos) {
+                if (auto start = htmlLine.find("Workshop::"); start != std::string::npos) {
+                    if (auto end = htmlLine.find_last_not_of(" \t\n\r\">"); end != std::string::npos) {
+                        idname = htmlLine.substr(start + 10, end - start - 16);
+                        break;
                     }
                 }
             }
         }
-    }
         filerestort(inputCmd, idnumber, idname);
     }
     }

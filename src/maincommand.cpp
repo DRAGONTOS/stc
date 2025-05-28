@@ -1,3 +1,5 @@
+#include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -6,10 +8,9 @@
 #include <archive_entry.h>
 #include <ostream>
 #include <stdexcept>
-#include <sys/stat.h>  // for mkdir()
+#include <sys/stat.h>
 #include <string>
 #include <thread>
-#include <chrono>
 #include <atomic>
 #include "includes/Regex.hpp"
 #include "includes/getHttp.hpp"
@@ -17,7 +18,6 @@
 
 void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& running) {
     char temp[128];
-
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
 
     if (!pipe) {
@@ -46,20 +46,7 @@ void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& ru
             meow << "start:\n" + line; 
         }
     }
-
     running = false; 
-}
-
-// loading cursor
-void showLoadingCursor(std::atomic<bool>& running) {
-    const char* cursor = "|/-\\";
-    int i = 0;
-
-    while (running) {
-        std::cout << "\r" << cursor[i++ % 4] << " Getting Mods...";
-        std::cout.flush();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
 }
 
 bool steamexists(const std::string& path) {
@@ -118,11 +105,140 @@ void setup(const std::string& dirname) {
     }
 }
 
+void installedmodslist(const std::string& cmd, std::string& sourcefile, std::string& collectionid) {
+    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+    
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), pipe.get()) != nullptr) {
+        //strings
+        std::string line;
+        std::string downloaderror;
+        std::string downloadsuccess;
+
+        std::istringstream inputStream(buffer);
+        while (std::getline(inputStream, line)) {
+        if (line.find("Download") != std::string::npos) {
+        auto response = line.find("Success") != std::string::npos ? downloadsuccess = "Successfully downloaded: " 
+                    : (line.find("ERROR") != std::string::npos ? downloaderror = "Error downloading: " : "");
+
+        // if success trim
+        if (!downloadsuccess.empty()) {
+            std::string successidname;
+            std::string successLine = line; 
+
+            // Extract mod ID (e.g. "1508850027")
+            size_t itemPos = successLine.find(" item ");
+            size_t toPos = successLine.find(" to ");
+            
+            if (itemPos != std::string::npos && toPos != std::string::npos && toPos > itemPos) {
+                // Calculate positions correctly
+                size_t idStart = itemPos + 6; // Skip " item "
+                size_t idLength = toPos - idStart;
+                std::string modId = successLine.substr(idStart, idLength);
+
+                if (!collectionid.empty()) {
+                    // Find mod title in sourcefile JSON
+                    try {
+                        // Search for JSON pattern: "id":"1508850027","title":"Mod Name"
+                        std::string searchPattern = "\"id\":\"" + modId + "\",\"title\":\"";
+                        size_t titlePos = sourcefile.find(searchPattern);
+                        
+                        if (titlePos != std::string::npos) {
+                            size_t titleStart = titlePos + searchPattern.length();
+                            size_t titleEnd = sourcefile.find("\"", titleStart);
+                            
+                            if (titleEnd != std::string::npos) {
+                                successidname = sourcefile.substr(titleStart, titleEnd - titleStart);
+                            }
+                        }
+                    } catch (...) {
+                        std::cerr << "Error parsing mod data" << std::endl;
+                    }
+                    std::cout << downloadsuccess << successidname << std::endl;
+                } else {
+                    // HTML/Workshop format parsing
+                    std::istringstream iss(sourcefile);
+                    for (std::string htmlLine; std::getline(iss, htmlLine); ) {
+                        if (htmlLine.find("<title>") != std::string::npos) {
+                            if (auto start = htmlLine.find("Workshop::"); start != std::string::npos) {
+                                if (auto end = htmlLine.find_last_not_of(" \t\n\r\">"); end != std::string::npos) {
+                                    successidname = htmlLine.substr(start + 10, end - start - 16);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    std::cout << downloadsuccess << successidname << std::endl;
+                }
+            }
+        }
+
+        // if error trim
+        if (!downloaderror.empty()) {
+            std::string failedidname;
+            std::string errorLine = line; 
+
+            // Extract failed mod ID (e.g. "818773962")
+            size_t itemPos = errorLine.find(" item ");
+            size_t failedPos = errorLine.find(" failed ");
+            std::string modId = errorLine.substr(itemPos, failedPos);
+            
+            if (itemPos != std::string::npos && failedPos != std::string::npos) {
+                std::string modId = errorLine.substr(
+                    itemPos + 6, // Skip " item "
+                    failedPos - (itemPos + 6) // Length until " failed "
+                );
+                if (!collectionid.empty()) {
+                    try {
+                        // Look for pattern like "id":"818773962","title":"Actual Mod Name"
+                        std::string searchPattern = "\"id\":\"" + modId + "\",\"title\":\"";
+                        size_t titlePos = sourcefile.find(searchPattern);
+                        
+                        if (titlePos != std::string::npos) {
+                            size_t titleStart = titlePos + searchPattern.length();
+                            size_t titleEnd = sourcefile.find("\"", titleStart);
+                            
+                            if (titleEnd != std::string::npos) {
+                                failedidname = sourcefile.substr(titleStart, titleEnd - titleStart);
+                            }
+                        }
+                        std::cout << downloaderror << failedidname << std::endl;
+                    } catch (...) {
+                        std::cerr << "Error parsing mod data" << std::endl;
+                    }
+                std::cout << downloaderror << failedidname << std::endl;
+                } else {
+                    std::istringstream iss(sourcefile);
+                    for (std::string htmlLine; std::getline(iss, htmlLine); ) {
+                        if (htmlLine.find("<title>") != std::string::npos) {
+                            if (auto start = htmlLine.find("Workshop::"); start != std::string::npos) {
+                                if (auto end = htmlLine.find_last_not_of(" \t\n\r\">"); end != std::string::npos) {
+                                    failedidname = htmlLine.substr(start + 10, end - start - 16);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    std::cout << downloaderror << failedidname << std::endl;
+                }
+            }
+            }
+            }
+    }
+    }
+}
+
 void maincommand(cmd *inputCmd) {
   //setup for steamcmd
   setup(std::string(inputCmd->userHome) + "/.local/share/stc");
 
   std::string idsm = R"( +workshop_download_item )" + inputCmd->gameid + " " + inputCmd->modid + " +quit";
+  std::string sourcefile = inputCmd->source; 
+  std::string collectionid = inputCmd->collectionid; 
 
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamapps");
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamcmd_linux.tar.gz");
@@ -143,15 +259,22 @@ void maincommand(cmd *inputCmd) {
      + " "
      + ((inputCmd->collectionid.empty()) ? idsm: inputCmd->ids)}.c_str();
 
+  // executes maincommand2
   try {
-      std::atomic<bool> running(true); 
-      std::thread cursorThread(showLoadingCursor, std::ref(running)); 
-      execAndDisplay(inputCmd, maincommand2, running); 
+     std::cout << "=======================================================================\n\n" << std::flush;
+      
+     std::atomic<bool> running(true); 
+     std::thread installedmods([&running, maincommand2, &sourcefile, &collectionid]() {
+     installedmodslist(maincommand2, sourcefile, collectionid);
+     });
+      
+     installedmods.join();
+     execAndDisplay(inputCmd, maincommand2, running); 
 
-      running = false; 
-      cursorThread.join();
+     running = false; 
+     std::cout << "\n=======================================================================" << std::flush;
   } catch (const std::runtime_error& e) {
-      std::cerr << "\nError: " << e.what() << "\n"; 
+     std::cerr << "\nError: " << e.what() << "\n"; 
   }
 
   // mod or collection?
