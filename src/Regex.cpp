@@ -1,8 +1,10 @@
+#include <chrono>
 #include <filesystem>
 #include <iostream>
 #include <ostream>
 #include <string>
 #include <sstream> 
+#include <thread>
 #include "includes/Regex.hpp"
 
 void Regex(cmd* inputCmd) {
@@ -42,18 +44,25 @@ void filerestortthreaded(cmd *inputCmd, std::string idnumber, std::string idname
   std::filesystem::path modname   = inputCmd->dir + "/" + idname;
 
   // renames and moves the files.
+for (int attempt = 0; attempt < 3; ++attempt) {
   try {
       if (std::filesystem::exists(steamdir)) {
           if (std::filesystem::exists(modname)) {
               std::filesystem::remove_all(modname); 
           }
+          std::this_thread::sleep_for(std::chrono::milliseconds(100));
           std::filesystem::rename(steamdir, modname);
           inputCmd->threadsCompleted++;
+          break;
       } else {
           std::cerr << "Error: The directory " << steamdir << " does not exist." << std::endl;
           inputCmd->threadsCompleted++;
       }
   } catch (const std::filesystem::filesystem_error& e) {
+        if (attempt == 2) {
+            std::cerr << "Failed after 3 attempts: " << e.what() << std::endl;
+            throw;
+        }
       std::cerr << "Filesystem error: " << e.what() << std::endl;
       inputCmd->threadsCompleted++;
 
@@ -62,6 +71,7 @@ void filerestortthreaded(cmd *inputCmd, std::string idnumber, std::string idname
       inputCmd->threadsCompleted++;
 
   }
+}
 }
 
 // void filerestort(cmd *inputCmd) {
