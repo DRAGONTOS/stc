@@ -1,6 +1,6 @@
 pkgname=stc-git
 _gitname=stc
-pkgver=0.1.8
+pkgver=0.1.9
 pkgrel=1
 pkgdesc="Easily download collections and mods from steam."
 url="https://github.com/DRAGONTOS/stc"

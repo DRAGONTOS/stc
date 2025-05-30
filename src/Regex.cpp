@@ -3,51 +3,37 @@
 #include <ostream>
 #include <string>
 #include <sstream> 
-#include "regex"
 #include "includes/Regex.hpp"
 
-// regex and stuff (collectionid)
-void Regex(cmd *inputCmd) {
-        std::istringstream inputStream(inputCmd->source);
+void Regex(cmd* inputCmd) {
+    std::istringstream inputStream(inputCmd->source);
+    std::string line;
+    
+    const std::string searchPattern = "<div class=\"workshopItemPreviewHolder  ";
+    const std::string divPattern = "\"><div class=";
+    const std::string idPattern = "id=";
 
-        // Regex to search for the desired pattern
-        std::regex grepRegex(R"(<div class="workshopItemPreviewHolder  )");
-        std::string line;
-
-        // Process each line from the input file
-        while (std::getline(inputStream, line)) {
-            // grep-like behavior (only process lines containing the pattern with two spaces)
-            if (std::regex_search(line, grepRegex)) {
-                // sed 's/"><div class=.*//'
-                std::size_t divPos = line.find("\"><div class=");
-                if (divPos != std::string::npos) {
-                    line = line.substr(0, divPos); // Trim everything after '"><div class='
-                }
-
-                // sed 's/.*id=//'
-                std::size_t idPos = line.find("id=");
-                if (idPos != std::string::npos) {
-                    line = line.substr(idPos + 3); // Trim everything before 'id=' and keep the ID
-                }
-
-                line = "+workshop_download_item " + inputCmd->gameid + " " + line;
-
-                line += " \\";
-
-                inputCmd->ids += line + "\n"; // Write to output buffer
+    while (std::getline(inputStream, line)) {
+        if (line.find(searchPattern) != std::string::npos) {
+            // Extract the ID portion
+            size_t divPos = line.find(divPattern);
+            if (divPos != std::string::npos) {
+                line = line.substr(0, divPos);
             }
+
+            size_t idPos = line.find(idPattern);
+            if (idPos != std::string::npos) {
+                line = line.substr(idPos + idPattern.length());
+            }
+
+            // Format the output line
+            inputCmd->ids += "+workshop_download_item " + inputCmd->gameid + " " + line + " \\\n";
+            inputCmd->totalmods++;
         }
-
-        // Step 6: Write "+quit" at the end of the output buffer
-        inputCmd->ids += "+quit\n";
-
-    std::istringstream inputStreamids(inputCmd->ids);
-    std::string lineids;
-
-    // Count the number of lines
-    while (std::getline(inputStreamids, lineids)) {
-        inputCmd->totalmods++; 
     }
+
+    // Add the quit command
+    inputCmd->ids += "+quit\n";
 }
 
 // renames modid to modname gathered from the html's metedata
@@ -101,16 +87,19 @@ void filerestort(cmd *inputCmd, std::string idnumber, std::string idname) {
 }
 
 void Modname(cmd *inputCmd, size_t index) {
-  std::string idnumber;
-  std::string idname;
-    // std::cout << std::string(inputCmd->source) << std::endl;
-  if (!inputCmd->sucids.empty()) {
-    std::regex downloadItemRegex(R"(Downloaded item (\d+))");
+    std::string idnumber;
+    std::string idname;
 
-    std::smatch match;
-    if (std::regex_search(inputCmd->sucids[index], match, downloadItemRegex)) {
-        std::string downloadItemNumber = match[1].str();
-        idnumber = downloadItemNumber;
+    if (!inputCmd->sucids.empty()) {
+        const std::string& line  = inputCmd->sucids[index];
+        const std::string prefix = "Downloaded item ";
+        
+    std::size_t pos = line.find(prefix);
+    if (pos != std::string::npos) {
+        std::size_t numStart = pos + prefix.length();
+        std::size_t numEnd = line.find_first_not_of("0123456789", numStart);
+        if (numEnd == std::string::npos) numEnd = line.length();
+        idnumber = line.substr(numStart, numEnd - numStart);
     }
 
     std::istringstream inputStream(inputCmd->source);
