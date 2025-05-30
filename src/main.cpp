@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -5,8 +6,23 @@
 #include "includes/Strings.hpp"
 #include "includes/Regex.hpp"
 #include "includes/maincommand.hpp"
+#include <netdb.h>
+#include <arpa/inet.h>
 
 int main(int argc, char **argv, char **envp) {
+  // checks if there is a internet connection.
+  const char *hostname;
+  struct hostent *hostinfo;
+
+  hostname = "google.com";
+
+  hostinfo = gethostbyname (hostname);
+
+  if (hostinfo == NULL) {
+    std::cerr << "Couldnt find a network connection exiting....\n";
+    exit(1);
+  }
+  
   // struct cmd
   cmd inputCmd;
   std::vector<std::string> ARGS{argv, argv + argc};
