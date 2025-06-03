@@ -317,7 +317,7 @@ void maincommand(cmd *inputCmd) {
      std::atomic<bool> running(true); 
      
      if (!inputCmd->collectionid.empty()) {
-        std::cout << "Installing collection: " << title << std::endl;
+        std::cout << "Installing collection: " << title << "\nDestination: " << inputCmd->dir << std::endl;
         std::cout << "\nCollection Summary:\n Installing:         " << totalmods << " Mods" << std::endl;
      } else {
         std::cout << "Installing mod: " << title << "\n";
