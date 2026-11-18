@@ -7,6 +7,7 @@
 #include "includes/Strings.hpp"
 #include "includes/Regex.hpp"
 #include "includes/maincommand.hpp"
+#include "includes/webserver.hpp"
 #include "includes/zip.hpp"
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -107,6 +108,12 @@ int main(int argc, char **argv, char **envp) {
         break;
       }
 
+      // the local website
+      if (ARGS[i] == "-w") {
+        webserver(&inputCmd, (argc >= 3 && argv[2][0] != '-') ? argv[2] : "8080");
+        return 0;
+      }
+
       // pack the installed mods of a folder into a zip
       if (ARGS[i] == "-z") {
         std::string dir = (argc >= 3 && argv[2][0] != '-') ? argv[2] : std::string(inputCmd.userHome) + "/.local/share/stc/mods";
@@ -122,7 +129,7 @@ int main(int argc, char **argv, char **envp) {
           return 1;
         }
         std::string dir = (argc >= 4 && argv[3][0] != '-') ? argv[3] : std::string(inputCmd.userHome) + "/.local/share/stc/mods";
-        importzip(argv[2], dir);
+        std::cout << importzip(argv[2], dir) << std::endl;
         return 0;
       }
 

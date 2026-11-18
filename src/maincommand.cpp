@@ -557,12 +557,14 @@ void maincommand(cmd *inputCmd) {
      }
      
      // y\n prompt
-     std::cout << "\nIs this ok [y/N]: ";
+     if (getenv("STC_YES") == nullptr) {
+        std::cout << "\nIs this ok [y/N]: ";
 
-     char input = 'n';
-     if (!(std::cin >> input) || std::tolower(input) != 'y') {
-        std::cout << "Operation aborted by the user.\n";
-        std::exit(0);
+        char input = 'n';
+        if (!(std::cin >> input) || std::tolower(input) != 'y') {
+           std::cout << "Operation aborted by the user.\n";
+           std::exit(0);
+        }
      }
      std::cout << std::endl;
 

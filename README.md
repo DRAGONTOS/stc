@@ -109,6 +109,23 @@ backup. `-i` imports such a zip: it restores the mod folders into the dir and
 merges the registry entries, so `stc -u` keeps updating those mods afterwards.
 Importing the same zip twice does not duplicate anything.
 
+# Website
+
+```
+stc -w [port]
+```
+
+```
+opened website on localhost:8080
+```
+
+Serves a local site on `127.0.0.1` only, default port 8080 (it walks up to the
+next free one and says which it took, Ctrl-C stops it). Material You styling
+with purple accents, dark scheme aware. The page can install collections and
+mods, update a folder, download a folder as a zip and upload a zip to import
+it. One job runs at a time; steam credentials stay on this machine and are only
+passed to steamcmd.
+
 # Where things live
 
 - `~/.local/share/stc/Steam`: the steamcmd install, created on first use.

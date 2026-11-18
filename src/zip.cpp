@@ -83,12 +83,12 @@ static void writefileentry(struct archive* zip, const std::string& zippath, cons
     archive_entry_free(entry);
 }
 
-void exportzip(const std::string& dir, const std::string& zipfile) {
+std::string exportzip(const std::string& dir, const std::string& zipfile) {
     std::filesystem::path manifestpath = std::filesystem::path(dir) / ".stc-manifest";
     std::ifstream manifest{manifestpath};
     if (!manifest) {
         std::cerr << "Nothing is tracked in " << dir << ", run stc -c or stc -m first." << std::endl;
-        return;
+        return "";
     }
     std::stringstream manifestcontent;
     manifestcontent << manifest.rdbuf();
@@ -98,7 +98,7 @@ void exportzip(const std::string& dir, const std::string& zipfile) {
     if (archive_write_open_filename(zip, zipfile.c_str()) != ARCHIVE_OK) {
         std::cerr << "Could not write " << zipfile << std::endl;
         archive_write_free(zip);
-        return;
+        return "";
     }
 
     writeentry(zip, ".stc-manifest", manifestcontent.str());
@@ -127,17 +127,17 @@ void exportzip(const std::string& dir, const std::string& zipfile) {
 
     archive_write_close(zip);
     archive_write_free(zip);
-    std::cout << "Packed " << packed << " mods into " << zipfile << std::endl;
+    return "Packed " + std::to_string(packed) + " mods into " + zipfile;
 }
 
-void importzip(const std::string& zipfile, const std::string& targetdir) {
+std::string importzip(const std::string& zipfile, const std::string& targetdir) {
     struct archive* in = archive_read_new();
     archive_read_support_format_zip(in);
     archive_read_support_format_tar(in);
     if (archive_read_open_filename(in, zipfile.c_str(), 10240) != ARCHIVE_OK) {
         std::cerr << "Could not read " << zipfile << std::endl;
         archive_read_free(in);
-        return;
+        return "";
     }
 
     std::filesystem::create_directories(targetdir);
@@ -223,9 +223,10 @@ void importzip(const std::string& zipfile, const std::string& targetdir) {
         registered++;
     }
 
-    std::cout << "Imported " << imported << " files from " << zipfile << " into " << targetdir
-              << ", " << registered << " mods registered for updates." << std::endl;
+    std::string summary = "Imported " + std::to_string(imported) + " files from " + zipfile + " into " + targetdir
+              + ", " + std::to_string(registered) + " mods registered for updates.";
     if (registered > 0) {
-        std::cout << "Run stc -u " << targetdir << " to update them." << std::endl;
+        summary += "\nRun stc -u " + targetdir + " to update them.";
     }
+    return summary;
 }

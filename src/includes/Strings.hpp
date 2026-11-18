@@ -9,6 +9,7 @@ LISTING FLAGS:
     -u:           Update steamcmd and the mods in a folder.
     -z:           Pack the installed mods of a folder into a zip.
     -i:           Import a zip of mods and register them for updates.
+    -w:           Open the website on localhost.
 )#";
 
 const std::string_view HELP = R"#(usage:  Steam Collector [flags] [<command> [args]]
@@ -19,6 +20,7 @@ LISTING FLAGS:
     -u:           Update steamcmd and the mods in a folder.
     -z:           Pack the installed mods of a folder into a zip.
     -i:           Import a zip of mods and register them for updates.
+    -w:           Open the website on localhost.
 
  LISTING ARGS:
     1: Should be the collectionid/modid.
