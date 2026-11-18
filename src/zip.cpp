@@ -83,7 +83,7 @@ static void writefileentry(struct archive* zip, const std::string& zippath, cons
     archive_entry_free(entry);
 }
 
-std::string exportzip(const std::string& dir, const std::string& zipfile) {
+std::string exportzip(const std::string& dir, const std::string& zipfile, const std::vector<std::string>* only) {
     std::filesystem::path manifestpath = std::filesystem::path(dir) / ".stc-manifest";
     std::ifstream manifest{manifestpath};
     if (!manifest) {
@@ -101,14 +101,17 @@ std::string exportzip(const std::string& dir, const std::string& zipfile) {
         return "";
     }
 
-    writeentry(zip, ".stc-manifest", manifestcontent.str());
-    writeentry(zip, "install.sh", installscript);
-
+    // the filtered manifest, so a zip registers exactly what it carries
+    std::ostringstream filtered;
     int packed = 0;
+    std::vector<std::filesystem::path> folders;
     std::string line;
     while (std::getline(manifestcontent, line)) {
         trackedmod mod;
         if (!manifestline(line, mod)) {
+            continue;
+        }
+        if (only != nullptr && std::find(only->begin(), only->end(), mod.folder) == only->end()) {
             continue;
         }
         std::filesystem::path folderpath = std::filesystem::path(dir) / mod.folder;
@@ -116,7 +119,15 @@ std::string exportzip(const std::string& dir, const std::string& zipfile) {
             std::cerr << "Skipping " << mod.folder << ", it is not in " << dir << " anymore." << std::endl;
             continue;
         }
+        filtered << mod.gameid << " " << mod.modid << " " << mod.folder << "\n";
+        folders.push_back(folderpath);
         packed++;
+    }
+
+    writeentry(zip, ".stc-manifest", filtered.str());
+    writeentry(zip, "install.sh", installscript);
+
+    for (const std::filesystem::path& folderpath : folders) {
         for (std::filesystem::recursive_directory_iterator it(folderpath), end; it != end; ++it) {
             if (it->is_regular_file()) {
                 std::string relpath = it->path().lexically_relative(dir).string();

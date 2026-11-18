@@ -31,6 +31,8 @@ static int jobtimedout = 0;
 static int joberrored = 0;
 // the folder the last web job installed into or updated, the zip download aims there when the page gives no folder
 static std::string jobdir;
+// the folders the last web job installed, so an export without a folder packs just those
+static std::vector<std::string> jobfolders;
 
 // escapes a string for a json response
 static std::string jsonescape(const std::string& text) {
@@ -221,6 +223,11 @@ static void runjob(std::string mode, std::vector<std::string> args) {
                 jobfinished++;
                 if (line.find("Error downloading") != std::string::npos) {
                     joberrored++;
+                } else {
+                    std::size_t nameat = line.find("downloaded: ");
+                    if (nameat != std::string::npos) {
+                        jobfolders.push_back(line.substr(nameat + 12));
+                    }
                 }
             } else if (line.find("Finished: ") == 0) {
                 jobfinished = std::stoi(line.substr(10));
@@ -542,6 +549,7 @@ static void handle(int fd, const std::string& homedir) {
             jobfinished = 0;
             jobtimedout = 0;
             joberrored = 0;
+            jobfolders.clear();
             if (dirgiven || mode == "install") {
                 jobdir = dir;
             }
@@ -560,7 +568,15 @@ static void handle(int fd, const std::string& homedir) {
             dir = homedir + "/.local/share/stc/mods";
         }
         std::string temp = "/tmp/stc-web-" + std::to_string(getpid()) + "-" + std::to_string(time(nullptr)) + ".zip";
-        std::string message = exportzip(dir, temp);
+        std::string message;
+        {
+            std::lock_guard<std::mutex> guard(joblock);
+            if (!jobfolders.empty() && std::filesystem::equivalent(std::filesystem::path(dir), std::filesystem::path(jobdir))) {
+                message = exportzip(dir, temp, &jobfolders);
+            } else {
+                message = exportzip(dir, temp);
+            }
+        }
         if (message.empty()) {
             sendresponse(fd, "500 Internal Server Error", "application/json", "{\"error\":\"packing failed, see the server log\"}");
             return;
