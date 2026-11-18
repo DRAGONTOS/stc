@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <poll.h>
 #include <sys/socket.h>
@@ -358,7 +359,7 @@ h2{margin:0 0 14px;font-size:15px;font-weight:600;color:var(--primary);
     <input class="field" id="z-target" placeholder="Folder to import into">
     <button class="btn" id="b-import" onclick="doimport()">Upload zip</button>
   </div>
-  <div class="hint">A downloaded zip carries the manifest and an install.sh, so it is a full backup; uploading one registers its mods for updates.</div>
+  <div class="hint">A downloaded zip carries the manifest and an install.sh, so it is a full backup; uploading one registers its mods for updates. After an install finishes, its zip downloads by itself.</div>
 </div>
 
 <div class="card" id="jobcard" style="display:none">
@@ -372,6 +373,7 @@ h2{margin:0 0 14px;font-size:15px;font-weight:600;color:var(--primary);
 
 <script>
 let mode = 'collection';
+let awaitingzip = false;
 function setmode(m){
   mode = m;
   document.getElementById('mode-collection').className = m === 'collection' ? 'active' : '';
@@ -389,7 +391,7 @@ async function install(){
     gameid: document.getElementById('i-game').value, dir: document.getElementById('i-dir').value
   });
   const res = await post('/install', body);
-  if (res.error) { alert(res.error); }
+  if (res.error) { alert(res.error); } else { awaitingzip = true; }
 }
 async function runupdate(){
   const body = JSON.stringify({dir: document.getElementById('u-dir').value});
@@ -422,6 +424,10 @@ async function poll(){
     }).join('') || '&nbsp;';
     for (const id of ['b-install','b-update','b-export','b-import']) {
       document.getElementById(id).disabled = job.running;
+    }
+    if (awaitingzip && !job.running && job.mode === 'install' && job.log.length > 0) {
+      awaitingzip = false;
+      window.location = '/export?dir=';
     }
   } catch(e) {}
 }
@@ -659,6 +665,27 @@ void webserver(const cmd *inputCmd, const std::string& port) {
     }
 
     std::cout << "opened website on localhost:" << boundport << " (Ctrl-C stops it)" << std::endl;
+
+    // opens the site in the desktop's browser, quietly skipped when there is no desktop
+    std::string url = "http://localhost:" + std::to_string(boundport);
+    std::vector<std::string> openargs{"xdg-open", url};
+    std::vector<char*> openargv;
+    for (const std::string& arg : openargs) {
+        openargv.push_back(const_cast<char*>(arg.c_str()));
+    }
+    openargv.push_back(nullptr);
+
+    posix_spawn_file_actions_t openactions;
+    posix_spawn_file_actions_init(&openactions);
+    posix_spawn_file_actions_addopen(&openactions, STDOUT_FILENO, "/dev/null", O_WRONLY, 0);
+    posix_spawn_file_actions_addopen(&openactions, STDERR_FILENO, "/dev/null", O_WRONLY, 0);
+
+    pid_t opener;
+    if (posix_spawnp(&opener, "xdg-open", &openactions, nullptr, openargv.data(), environ) == 0) {
+        int status;
+        waitpid(opener, &status, 0);
+    }
+    posix_spawn_file_actions_destroy(&openactions);
 
     while (true) {
         int client = accept(server, nullptr, nullptr);
