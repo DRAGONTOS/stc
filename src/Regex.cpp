@@ -9,6 +9,41 @@
 #include <thread>
 #include "includes/Regex.hpp"
 
+// pulls the mod or collection name out of the fetched workshop page's <title> tag
+std::string workshoptitle(const std::string& sourcefile) {
+    std::istringstream iss(sourcefile);
+    for (std::string htmlLine; std::getline(iss, htmlLine); ) {
+        if (htmlLine.find("<title>") == std::string::npos) {
+            continue;
+        }
+        std::size_t start = htmlLine.find("Workshop::");
+        if (start == std::string::npos) {
+            continue;
+        }
+        std::size_t end = htmlLine.find_last_not_of(" \t\n\r\">");
+        if (end != std::string::npos) {
+            return htmlLine.substr(start + 10, end - start - 16);
+        }
+    }
+    return "";
+}
+
+// looks up a mod's title in the page's embedded JSON, empty when the id is not on the page
+std::string jsontitle(const std::string& sourcefile, const std::string& modId) {
+    std::string searchPattern = "\"id\":\"" + modId + "\",\"title\":\"";
+    std::size_t titlePos = sourcefile.find(searchPattern);
+    if (titlePos == std::string::npos) {
+        return "";
+    }
+
+    std::size_t titleStart = titlePos + searchPattern.length();
+    std::size_t titleEnd   = sourcefile.find("\"", titleStart);
+    if (titleEnd == std::string::npos) {
+        return "";
+    }
+    return sourcefile.substr(titleStart, titleEnd - titleStart);
+}
+
 void Regex(cmd* inputCmd) {
     std::istringstream inputStream(inputCmd->source);
     std::string line;
@@ -63,60 +98,33 @@ void recordinstall(const cmd *inputCmd, const std::string& idnumber, const std::
     manifest << entry << "\n";
 }
 
-// renames modid to modname gathered from the html's metedata
-void filerestortthreaded(cmd *inputCmd, std::string idnumber, std::string idname) {
-  std::filesystem::path steamdir  = std::string(inputCmd->userHome) + "/.cache/steamapps/workshop/content/" + inputCmd->gameid + "/" + idnumber;
-  std::filesystem::path modname   = inputCmd->dir + "/" + idname;
-
-  // renames and moves the files.
-for (int attempt = 0; attempt < 3; ++attempt) {
-  try {
-      if (std::filesystem::exists(steamdir)) {
-          if (std::filesystem::exists(modname)) {
-              std::filesystem::remove_all(modname); 
-          }
-          std::this_thread::sleep_for(std::chrono::milliseconds(100));
-          std::filesystem::rename(steamdir, modname);
-          recordinstall(inputCmd, idnumber, idname);
-          break;
-      } else {
-          std::cerr << "Error: The directory " << steamdir << " does not exist." << std::endl;
-      }
-  } catch (const std::filesystem::filesystem_error& e) {
-        if (attempt == 2) {
-            std::cerr << "Failed after 3 attempts: " << e.what() << std::endl;
-            throw;
-        }
-      std::cerr << "Filesystem error: " << e.what() << std::endl;
-
-  } catch (const std::exception& e) {
-      std::cerr << "Error: " << e.what() << std::endl;
-
-  }
-}
-}
-
-// void filerestort(cmd *inputCmd) {
+// renames modid to modname gathered from the html's metedata, retrying since steamcmd may still be settling the files
 void filerestort(cmd *inputCmd, std::string idnumber, std::string idname) {
   std::filesystem::path steamdir  = std::string(inputCmd->userHome) + "/.cache/steamapps/workshop/content/" + inputCmd->gameid + "/" + idnumber;
   std::filesystem::path modname   = inputCmd->dir + "/" + idname;
 
   // renames and moves the files.
-  try {
-      if (std::filesystem::exists(steamdir)) {
-          if (std::filesystem::exists(modname)) {
-              std::filesystem::remove_all(modname); 
-          }
-          std::filesystem::rename(steamdir, modname);
-          recordinstall(inputCmd, idnumber, idname);
-      } else {
-          std::cerr << "Error: The directory " << steamdir << " does not exist." << std::endl;
-      }
-  } catch (const std::filesystem::filesystem_error& e) {
-      std::cerr << "Filesystem error: " << e.what() << std::endl;
-  } catch (const std::exception& e) {
-      std::cerr << "Error: " << e.what() << std::endl;
+  for (int attempt = 0; attempt < 3; ++attempt) {
+    try {
+        if (std::filesystem::exists(steamdir)) {
+            if (std::filesystem::exists(modname)) {
+                std::filesystem::remove_all(modname);
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::filesystem::rename(steamdir, modname);
+            recordinstall(inputCmd, idnumber, idname);
+            return;
+        } else {
+            std::cerr << "Error: The directory " << steamdir << " does not exist." << std::endl;
+            return;
+        }
+    } catch (const std::filesystem::filesystem_error& e) {
+        std::cerr << "Filesystem error: " << e.what() << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
   }
+  std::cerr << "Failed after 3 attempts: could not move " << steamdir << std::endl;
 }
 
 void Modname(cmd *inputCmd, size_t index) {
@@ -135,39 +143,11 @@ void Modname(cmd *inputCmd, size_t index) {
         idnumber = line.substr(numStart, numEnd - numStart);
     }
 
-    std::istringstream inputStream(inputCmd->source);
     if (!inputCmd->collectionid.empty()) {
-        std::string line;
-
-        try {
-            std::string searchPattern = "\"id\":\"" + idnumber + "\",\"title\":\"";
-            size_t titlePos = inputCmd->source.find(searchPattern);
-            
-            if (titlePos != std::string::npos) {
-                size_t titleStart = titlePos + searchPattern.length();
-                size_t titleEnd = inputCmd->source.find("\"", titleStart);
-                
-                if (titleEnd != std::string::npos) {
-                    line = inputCmd->source.substr(titleStart, titleEnd - titleStart);
-                }
-                idname = line;
-            }
-        } catch (...) {
-            std::cerr << "Error parsing mod data" << std::endl;
-        }
-        filerestortthreaded(inputCmd, idnumber, idname);
+        idname = jsontitle(inputCmd->source, idnumber);
+        filerestort(inputCmd, idnumber, idname);
     } else {
-        std::istringstream iss(inputCmd->source);
-        for (std::string htmlLine; std::getline(iss, htmlLine); ) {
-            if (htmlLine.find("<title>") != std::string::npos) {
-                if (auto start = htmlLine.find("Workshop::"); start != std::string::npos) {
-                    if (auto end = htmlLine.find_last_not_of(" \t\n\r\">"); end != std::string::npos) {
-                        idname = htmlLine.substr(start + 10, end - start - 16);
-                        break;
-                    }
-                }
-            }
-        }
+        idname = workshoptitle(inputCmd->source);
         filerestort(inputCmd, idnumber, idname);
     }
     }

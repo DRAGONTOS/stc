@@ -20,7 +20,6 @@
 #include <atomic>
 #include "includes/Regex.hpp"
 #include "includes/getHttp.hpp"
-#include <tar.h>
 
 extern char **environ;
 
@@ -251,39 +250,11 @@ void installedmodslist(const cmd *inputCmd, const std::string& commands, const s
                 std::string modId = successLine.substr(idStart, idLength);
 
                 if (!collectionid.empty()) {
-                    // Find mod title in sourcefile JSON
-                    try {
-                        // Search for JSON pattern: "id":"1508850027","title":"Mod Name"
-                        std::string searchPattern = "\"id\":\"" + modId + "\",\"title\":\"";
-                        size_t titlePos = sourcefile.find(searchPattern);
-                        std::cout << modId << std::endl; 
-                        
-                        if (titlePos != std::string::npos) {
-                            size_t titleStart = titlePos + searchPattern.length();
-                            size_t titleEnd   = sourcefile.find("\"", titleStart);
-                            
-                            if (titleEnd != std::string::npos) {
-                                successidname = sourcefile.substr(titleStart, titleEnd - titleStart);
-                            }
-                        }
-                    } catch (...) {
-                        std::cerr << "Error parsing mod data" << std::endl;
-                    }
+                    successidname = jsontitle(sourcefile, modId);
                     std::cout << "[" << totalmods << "/" << total << "] " << downloadsuccess << successidname << std::endl;
                     totalmods++;
                 } else {
-                    // HTML/Workshop format parsing
-                    std::istringstream iss(sourcefile);
-                    for (std::string htmlLine; std::getline(iss, htmlLine); ) {
-                        if (htmlLine.find("<title>") != std::string::npos) {
-                            if (auto start = htmlLine.find("Workshop::"); start != std::string::npos) {
-                                if (auto end = htmlLine.find_last_not_of(" \t\n\r\">"); end != std::string::npos) {
-                                    successidname = htmlLine.substr(start + 10, end - start - 16);
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                    successidname = workshoptitle(sourcefile);
                     std::cout << downloadsuccess << successidname << std::endl;
                 }
             }
@@ -304,36 +275,10 @@ void installedmodslist(const cmd *inputCmd, const std::string& commands, const s
                     failedPos - (itemPos + 6) // Length until " failed "
                 );
                 if (!collectionid.empty()) {
-                    try {
-                        // Look for pattern like "id":"818773962","title":"Actual Mod Name"
-                        std::string searchPattern = "\"id\":\"" + modId + "\",\"title\":\"";
-                        size_t titlePos = sourcefile.find(searchPattern);
-                        
-                        if (titlePos != std::string::npos) {
-                            size_t titleStart = titlePos + searchPattern.length();
-                            size_t titleEnd   = sourcefile.find("\"", titleStart);
-                            
-                            if (titleEnd != std::string::npos) {
-                                failedidname = sourcefile.substr(titleStart, titleEnd - titleStart);
-                            }
-                        }
-                        std::cout << downloaderror << failedidname << std::endl;
-                    } catch (...) {
-                        std::cerr << "Error parsing mod data" << std::endl;
-                    }
-                std::cout << "[" << totalmods << "/" << total << "] " << downloaderror << failedidname << std::endl;
+                    failedidname = jsontitle(sourcefile, modId);
+                    std::cout << "[" << totalmods << "/" << total << "] " << downloaderror << failedidname << std::endl;
                 } else {
-                    std::istringstream iss(sourcefile);
-                    for (std::string htmlLine; std::getline(iss, htmlLine); ) {
-                        if (htmlLine.find("<title>") != std::string::npos) {
-                            if (auto start = htmlLine.find("Workshop::"); start != std::string::npos) {
-                                if (auto end = htmlLine.find_last_not_of(" \t\n\r\">"); end != std::string::npos) {
-                                    failedidname = htmlLine.substr(start + 10, end - start - 16);
-                                    break;
-                                }
-                            }
-                        }
-                    }
+                    failedidname = workshoptitle(sourcefile);
                     std::cout << downloaderror << failedidname << std::endl;
                 }
             }
@@ -348,8 +293,7 @@ void installedmodslist(const cmd *inputCmd, const std::string& commands, const s
 void maincommand(cmd *inputCmd) {
   //setup for steamcmd
   setup(std::string(inputCmd->userHome) + "/.local/share/stc");
-  std::istringstream curlhtmlsource(inputCmd->source);
- 
+
   // clears cache
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamapps");
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamcmd_linux.tar.gz");
@@ -375,7 +319,6 @@ void maincommand(cmd *inputCmd) {
   }
   commands += "+quit\n";
 
-  std::string htmlline;
   std::string title;
   std::string totalmods;
 
@@ -383,50 +326,29 @@ void maincommand(cmd *inputCmd) {
   const std::string startdesPattern = "A collection of ";
   const std::string enddesPattern   = " items created by";
 
-  // title of mod or collection
-  const std::string startPattern    = "<title>Steam Workshop::";
-  const std::string endPattern      = "</title>";
-
   struct stat sb;
 
   // sets dir to default mods folder if dir is empty or invalid.
-  if (stat(inputCmd->dir.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode)) { 
+  if (stat(inputCmd->dir.c_str(), &sb) == 0 && S_ISDIR(sb.st_mode)) {
   } else {
         inputCmd->dir = std::string(inputCmd->userHome) + "/.local/share/stc/mods";
   }
 
- // title of mod or collection
- while (std::getline(curlhtmlsource, htmlline)) {
-     size_t startPos2 = htmlline.find(startdesPattern);
-     if (startPos2 != std::string::npos) {
-         size_t endPos2 = htmlline.find(enddesPattern, startPos2);
-         if (endPos2 != std::string::npos) {
-             // Extract content between <title> and </title>
-             totalmods = htmlline.substr(
-                 startPos2 + startdesPattern.length(),
-                 endPos2 - (startPos2 + startdesPattern.length())
-             );
-        }
-     }
-
-     size_t startPos = htmlline.find(startPattern);
-     if (startPos != std::string::npos) {
-         size_t endPos = htmlline.find(endPattern, startPos);
-         if (endPos != std::string::npos) {
-             // Extract content between <title> and </title>
-             title = htmlline.substr(
-                 startPos + startPattern.length(),
-                 endPos - (startPos + startPattern.length())
-             );
-
-         }
-     }
- }
+  // how many mods the collection holds, and the title of mod or collection
+  size_t startPos2 = sourcefile.find(startdesPattern);
+  if (startPos2 != std::string::npos) {
+      size_t endPos2 = sourcefile.find(enddesPattern, startPos2);
+      if (endPos2 != std::string::npos) {
+          totalmods = sourcefile.substr(
+              startPos2 + startdesPattern.length(),
+              endPos2 - (startPos2 + startdesPattern.length())
+          );
+      }
+  }
+  title = workshoptitle(sourcefile);
 
   // runs steamcmd
   try {
-     // std::cout << "Modid:                     Latest Version:                     Authors:\n" 
-     //           << "=======================================================================\n\n";
      std::cout << "=======================================================================\n\n";
      std::atomic<bool> running(true); 
      
