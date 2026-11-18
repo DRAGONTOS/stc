@@ -207,7 +207,9 @@ void setup(const std::string& dirname) {
             try {
                 downloadFile("https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz", downloaddir);
                 extractTarGz(downloaddir, std::string(userHome) + "/.local/share/stc/Steam");
-            } catch (std::string &meow) {}
+            } catch (const std::exception& e) {
+                std::cerr << "Error installing steamcmd: " << e.what() << std::endl;
+            }
     }
 
     // Creates the default mods folder 

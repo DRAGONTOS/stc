@@ -79,8 +79,8 @@ int main(int argc, char **argv, char **envp) {
 
           try {
             getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid});
-          } catch (std::string &meow) {
-            std::cout << meow;
+          } catch (const std::exception& e) {
+            std::cerr << e.what();
             return 1;
           }
 
@@ -98,8 +98,8 @@ int main(int argc, char **argv, char **envp) {
 
           try {
             getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid});
-          } catch (std::string &meow) {
-            std::cout << meow;
+          } catch (const std::exception& e) {
+            std::cerr << e.what();
             return 1;
           }
 
@@ -130,8 +130,8 @@ int main(int argc, char **argv, char **envp) {
 
           try {
             getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.modid});
-          } catch (std::string &meow) {
-            std::cout << meow;
+          } catch (const std::exception& e) {
+            std::cerr << e.what();
             return 1;
           }
 
@@ -149,8 +149,8 @@ int main(int argc, char **argv, char **envp) {
 
           try {
             getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.modid});
-          } catch (std::string &meow) {
-            std::cout << meow;
+          } catch (const std::exception& e) {
+            std::cerr << e.what();
             return 1;
           }
 

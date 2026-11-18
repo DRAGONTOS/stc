@@ -28,7 +28,7 @@ void getHttp(cmd *inputCmd, std::string url) {
 
   // perform the request
   if (curl_easy_perform(meow) != CURLE_OK) {
-    throw("failed to perform the request\n");
+    throw std::runtime_error("failed to perform the request\n");
   }
 
   inputCmd->source = woof;
