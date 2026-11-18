@@ -478,12 +478,14 @@ void maincommand(cmd *inputCmd) {
 
     if (!inputCmd->collectionid.empty()) {
      //start the threads
+        std::vector<std::thread> meowthreads;
         for(size_t nya{0}; nya < inputCmd->sucids.size(); ++nya){
-            inputCmd->totalmods++; 
-            std::thread meowT {Modname, inputCmd, nya};
-            meowT.detach();
+            inputCmd->totalmods++;
+            meowthreads.emplace_back(Modname, inputCmd, nya);
         }
-        while(inputCmd->threadsCompleted != inputCmd->sucids.size()){}
+        for (std::thread& meowT : meowthreads) {
+            meowT.join();
+        }
     } else {
         for(size_t nya{0}; nya < inputCmd->sucids.size(); ++nya) {
             inputCmd->totalmods++;

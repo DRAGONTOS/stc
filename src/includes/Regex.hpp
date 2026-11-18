@@ -27,8 +27,6 @@ int successes = 0;
 int timedout  = 0;
 int errors    = 0;
 int totalmeow = 0;
-
-size_t threadsCompleted = 0;
 };
 
 void Regex(cmd *inputCmd);

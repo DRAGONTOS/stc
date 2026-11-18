@@ -78,11 +78,9 @@ for (int attempt = 0; attempt < 3; ++attempt) {
           std::this_thread::sleep_for(std::chrono::milliseconds(100));
           std::filesystem::rename(steamdir, modname);
           recordinstall(inputCmd, idnumber, idname);
-          inputCmd->threadsCompleted++;
           break;
       } else {
           std::cerr << "Error: The directory " << steamdir << " does not exist." << std::endl;
-          inputCmd->threadsCompleted++;
       }
   } catch (const std::filesystem::filesystem_error& e) {
         if (attempt == 2) {
@@ -90,11 +88,9 @@ for (int attempt = 0; attempt < 3; ++attempt) {
             throw;
         }
       std::cerr << "Filesystem error: " << e.what() << std::endl;
-      inputCmd->threadsCompleted++;
 
   } catch (const std::exception& e) {
       std::cerr << "Error: " << e.what() << std::endl;
-      inputCmd->threadsCompleted++;
 
   }
 }
