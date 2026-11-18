@@ -17,7 +17,7 @@ set(CMAKE_CXX_STANDARD 26)
 
 # check if build type is set if it isnt set it to release
 if(NOT CMAKE_BUILD_TYPE)
-  set(DCKMAKE_BUILD_TYPE Release)
+  set(CMAKE_BUILD_TYPE Release)
 endif()
 
 # Add the path to the source files for stc
@@ -25,7 +25,7 @@ file(GLOB_RECURSE STC_SOURCE_FILES "src/*.cpp")
 
 # add compiler flags
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-02")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2")
 
 # Add the executable target for stc
 add_executable(stc ${STC_SOURCE_FILES})

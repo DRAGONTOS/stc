@@ -24,7 +24,7 @@ prepare() {
 
 build() {
     cd ${_gitname}
-    cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Debug -S . -B ./build -G Ninja
+    cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -S . -B ./build -G Ninja
     cmake --build ./build
 }
 
