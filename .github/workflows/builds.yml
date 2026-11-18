@@ -1,0 +1,64 @@
+name: builds
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: builds-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build pkg-config libarchive-dev libcurl4-openssl-dev g++-14
+
+      - name: build
+        run: |
+          cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -S . -B ./build -G Ninja \
+            -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14
+          cmake --build ./build
+          cd build
+          cpack -G DEB
+          cpack -G RPM
+          cd ..
+          mkdir out
+          cp build/stc out/stc-linux-x86_64
+          cp build/*.deb build/*.rpm out/
+          ls -la out
+
+      - name: read the version
+        id: version
+        run: echo "version=$(sed -n 's/.*"version": "\([^"]*\)".*/\1/p' props.json)" >> "$GITHUB_OUTPUT"
+
+      - name: publish the tag release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" out/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "stc ${{ steps.version.outputs.version }}" \
+            --notes "Binary for x86_64 Linux, a deb and an rpm. Build it yourself with make all if your distro is not covered." \
+            --latest
+
+      - name: publish the rolling release
+        if: github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create latest out/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "stc ${{ steps.version.outputs.version }} (latest master)" \
+            --notes "Fresh build of master, replaced on every push. Pin a version with a tag instead." \
+            --prerelease

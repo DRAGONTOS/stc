@@ -24,7 +24,9 @@ make all
 sudo make install
 ```
 
-`make all` clears `build/` and configures with Ninja. The `release` target currently passes `-DCMAKE_BUILD_TYPE=Debug`; see the gotchas before trusting build flags. Packaging:
+`.github/workflows/builds.yml` builds master and tags on ubuntu-24.04 with g++-14 and publishes the binary, a deb and an rpm to the releases: a rolling `latest` prerelease replaced on every master push, and a pinned release per `v*` tag. It needs no secrets beyond the workflow token.
+
+`make all` clears `build/` and configures with Ninja, building Release with `-O2`. Packaging:
 
 ```sh
 cd build && cpack -G DEB   # or RPM

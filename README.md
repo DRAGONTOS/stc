@@ -16,7 +16,9 @@ Debian might not work!!
 
 # Installing
 
-From source:
+Grab a build from [the releases](https://github.com/DRAGONTOS/stc/releases) —
+`latest` carries a fresh build of master, tags carry pinned versions, each with
+the binary, a deb and an rpm. Or compile it yourself:
 
 ```
 make all
