@@ -10,21 +10,142 @@
 #include <sstream>
 #include <stdexcept>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <spawn.h>
+#include <unistd.h>
 #include <string>
 #include <thread>
+#include <vector>
 #include <atomic>
 #include "includes/Regex.hpp"
 #include "includes/getHttp.hpp"
 #include <tar.h>
 
-// shows results
-void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& running) {
-    char temp[128];
-    // fixes a stupid compiler warning
-    auto pipe_deleter = [](FILE* fp) { pclose(fp); };
-    std::unique_ptr<FILE, decltype(pipe_deleter)> pipe(popen(cmd.c_str(), "r"), pipe_deleter);
+extern char **environ;
 
-    while (fgets(temp, sizeof(temp), pipe.get()) != nullptr) {
+// a spawned steamcmd: its stdout as a stream, the thread feeding its stdin and its pid for reaping
+struct steamproc {
+    std::FILE* out        = nullptr;
+    pid_t      pid        = -1;
+    std::thread stdinwriter;
+
+    // joins the stdin writer, closes the stdout stream and reaps the child
+    void close() {
+        if (stdinwriter.joinable()) {
+            stdinwriter.join();
+        }
+        if (out != nullptr) {
+            std::fclose(out);
+            out = nullptr;
+        }
+        if (pid > 0) {
+            int status;
+            waitpid(pid, &status, 0);
+            pid = -1;
+        }
+    }
+};
+
+// spawns steamcmd with an argument array instead of a shell string; the login password and the download commands go over stdin, so they never appear in the process list
+steamproc spawnSteamcmd(const cmd *inputCmd) {
+    std::vector<std::string> args{
+        "sh",
+        std::string(inputCmd->userHome) + "/.local/share/stc/Steam/steamcmd.sh",
+        "+force_install_dir",
+        std::string(inputCmd->userHome) + "/.cache",
+        "+login",
+        inputCmd->user,
+    };
+
+    std::string stdinlines;
+    if (!inputCmd->pass.empty()) {
+        stdinlines += inputCmd->pass + "\n";
+    }
+
+    if (!inputCmd->collectionid.empty()) {
+        std::istringstream ids(inputCmd->ids);
+        for (std::string idline; std::getline(ids, idline); ) {
+            if (!idline.empty() && idline.back() == '\\') {
+                idline.pop_back();
+            }
+            if (idline.empty() || idline.find("+quit") != std::string::npos) {
+                continue;
+            }
+            stdinlines += idline + "\n";
+        }
+    } else {
+        stdinlines += "+workshop_download_item " + inputCmd->gameid + " " + inputCmd->modid + "\n";
+    }
+    stdinlines += "+quit\n";
+
+    int outpipe[2];
+    int inpipe[2];
+    if (pipe(outpipe) != 0) {
+        return {};
+    }
+    if (pipe(inpipe) != 0) {
+        close(outpipe[0]);
+        close(outpipe[1]);
+        return {};
+    }
+
+    posix_spawn_file_actions_t actions;
+    posix_spawn_file_actions_init(&actions);
+    posix_spawn_file_actions_adddup2(&actions, inpipe[0], STDIN_FILENO);
+    posix_spawn_file_actions_adddup2(&actions, outpipe[1], STDOUT_FILENO);
+    posix_spawn_file_actions_addclose(&actions, outpipe[0]);
+    posix_spawn_file_actions_addclose(&actions, inpipe[1]);
+    posix_spawn_file_actions_addclose(&actions, inpipe[0]);
+    posix_spawn_file_actions_addclose(&actions, outpipe[1]);
+
+    std::vector<char*> argv;
+    for (const std::string& arg : args) {
+        argv.push_back(const_cast<char*>(arg.c_str()));
+    }
+    argv.push_back(nullptr);
+
+    pid_t pid;
+    int spawned = posix_spawnp(&pid, "sh", &actions, nullptr, argv.data(), environ);
+    posix_spawn_file_actions_destroy(&actions);
+    close(inpipe[0]);
+    close(outpipe[1]);
+
+    if (spawned != 0) {
+        close(inpipe[1]);
+        close(outpipe[0]);
+        return {};
+    }
+
+    steamproc proc;
+    proc.pid = pid;
+    proc.out = fdopen(outpipe[0], "r");
+    if (proc.out == nullptr) {
+        close(outpipe[0]);
+        close(inpipe[1]);
+        return proc;
+    }
+
+    int infd = inpipe[1];
+    proc.stdinwriter = std::thread([stdinlines = std::move(stdinlines), infd]() {
+        size_t written = 0;
+        while (written < stdinlines.size()) {
+            ssize_t chunk = write(infd, stdinlines.data() + written, stdinlines.size() - written);
+            if (chunk <= 0) {
+                break;
+            }
+            written += static_cast<size_t>(chunk);
+        }
+        close(infd);
+    });
+    return proc;
+}
+
+// shows results
+void execAndDisplay(cmd *inputCmd, std::atomic<bool>& running) {
+    char temp[128];
+    steamproc proc = spawnSteamcmd(inputCmd);
+
+    while (proc.out != nullptr && fgets(temp, sizeof(temp), proc.out) != nullptr) {
         std::string line(temp);  
 
         // checks for success.
@@ -47,7 +168,8 @@ void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& ru
             meow << "start:\n" + line; 
         }
     }
-    running = false; 
+    proc.close();
+    running = false;
 }
 
 // checks if steamexists
@@ -106,15 +228,13 @@ void setup(const std::string& dirname) {
     mkdir(moddir.c_str(), 0777);
 }
 
-void installedmodslist(const std::string& cmd, std::string& sourcefile, std::string& collectionid, std::string& total) {
+void installedmodslist(const cmd *inputCmd, const std::string& sourcefile, const std::string& collectionid, const std::string& total) {
     int totalmods = 1;
 
-    // fixes a stupid compiler warning
-    auto pipe_deleter = [](FILE* fp) { pclose(fp); };
-    std::unique_ptr<FILE, decltype(pipe_deleter)> pipe(popen(cmd.c_str(), "r"), pipe_deleter);
-    
+    steamproc proc = spawnSteamcmd(inputCmd);
+
     char buffer[256];
-    while (fgets(buffer, sizeof(buffer), pipe.get()) != nullptr) {
+    while (proc.out != nullptr && fgets(buffer, sizeof(buffer), proc.out) != nullptr) {
 
         //strings
         std::string line;
@@ -234,6 +354,7 @@ void installedmodslist(const std::string& cmd, std::string& sourcefile, std::str
         }
     }
     }
+    proc.close();
 }
 
 // main function
@@ -246,7 +367,6 @@ void maincommand(cmd *inputCmd) {
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamapps");
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamcmd_linux.tar.gz");
 
-  std::string idsm         = " +workshop_download_item " + inputCmd->gameid + " " + inputCmd->modid + " +quit";
   std::string sourcefile   = inputCmd->source; // needed for some void functions 
   std::string collectionid = inputCmd->collectionid; 
 
@@ -269,18 +389,6 @@ void maincommand(cmd *inputCmd) {
   } else {
         inputCmd->dir = std::string(inputCmd->userHome) + "/.local/share/stc/mods";
   }
-
-  // steamcmd command
-  std::string maincommand2 = std::string{"sh " 
-     + std::string(inputCmd->userHome) 
-     + "/.local/share/stc/Steam/steamcmd.sh +force_install_dir "
-     + std::string(inputCmd->userHome) 
-     + "/.cache"
-     + " +login " 
-     + inputCmd->user 
-     + ((inputCmd->pass.empty()) ? "" : inputCmd->pass)  
-     + " "
-     + ((inputCmd->collectionid.empty()) ? idsm: inputCmd->ids)}.c_str();
 
  // title of mod or collection
  while (std::getline(curlhtmlsource, htmlline)) {
@@ -310,7 +418,7 @@ void maincommand(cmd *inputCmd) {
      }
  }
 
-  // executes maincommand2
+  // runs steamcmd
   try {
      // std::cout << "Modid:                     Latest Version:                     Authors:\n" 
      //           << "=======================================================================\n\n";
@@ -339,12 +447,12 @@ void maincommand(cmd *inputCmd) {
      }
      std::cout << std::endl;
 
-     std::thread installedmods([&running, maincommand2, &sourcefile, &collectionid, &totalmods]() {
-     installedmodslist(maincommand2, sourcefile, collectionid, totalmods);
+     std::thread installedmods([&running, inputCmd, &sourcefile, &collectionid, &totalmods]() {
+     installedmodslist(inputCmd, sourcefile, collectionid, totalmods);
      });
-      
+
      installedmods.join();
-     execAndDisplay(inputCmd, maincommand2, running); 
+     execAndDisplay(inputCmd, running);
 
      running = false; 
      std::cout << "\n=======================================================================" << std::flush;
