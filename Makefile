@@ -8,7 +8,6 @@ all:
 release:
 	cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Debug -S . -B ./build -G Ninja
 	cmake --build ./build
-	chmod -R 777 ./build
 
 clear:
 	rm -rf build
