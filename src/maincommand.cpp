@@ -592,9 +592,49 @@ void updatecommand(cmd *inputCmd, bool everything) {
 
     std::cout << "Checking for a steamcmd update..." << std::endl;
     steamproc proc = spawnSteamcmd(inputCmd, "+quit\n");
-    char temp[1024];
-    while (proc.out != nullptr && fgets(temp, sizeof(temp), proc.out) != nullptr) {
-        std::cout << temp;
+    bool tty = isatty(STDOUT_FILENO) == 1;
+    if (proc.out != nullptr) {
+        int outfd = fileno(proc.out);
+        std::string rewritten;
+        std::string piece;
+        char chunk[1024];
+        while (true) {
+            struct pollfd watcher { outfd, POLLIN, 0 };
+            if (poll(&watcher, 1, 500) <= 0) {
+                continue;
+            }
+            ssize_t got = read(outfd, chunk, sizeof(chunk));
+            if (got <= 0) {
+                break;
+            }
+            std::string data(chunk, got);
+            if (!tty) {
+                std::cout << data << std::flush;
+            }
+            for (char now : data) {
+                if (now == '\r') {
+                    rewritten = piece;
+                    piece.clear();
+                } else if (now == '\n') {
+                    rewritten.clear();
+                    piece.clear();
+                } else {
+                    piece += now;
+                }
+            }
+            int live = linepercent(piece);
+            if (live < 0) {
+                live = linepercent(rewritten);
+            }
+            if (tty) {
+                if (live >= 0) {
+                    std::cout << "\r\033[Ksteamcmd: " << live << "%" << std::flush;
+                }
+            }
+        }
+    }
+    if (tty) {
+        std::cout << "\r\033[K" << std::flush;
     }
     proc.close();
 
@@ -612,7 +652,18 @@ void updatecommand(cmd *inputCmd, bool everything) {
         while (std::getline(manifest, line)) {
             std::istringstream entry(line);
             trackedmod mod;
-            if (!(entry >> mod.gameid >> mod.modid >> mod.folder)) {
+            if (!(entry >> mod.gameid >> mod.modid)) {
+                continue;
+            }
+            // the folder name is the rest of the line, it can contain spaces
+            std::getline(entry, mod.folder);
+            if (!mod.folder.empty() && mod.folder.front() == ' ') {
+                mod.folder.erase(0, 1);
+            }
+            while (!mod.folder.empty() && (mod.folder.back() == ' ' || mod.folder.back() == '\r')) {
+                mod.folder.pop_back();
+            }
+            if (mod.folder.empty()) {
                 continue;
             }
             bool known = false;
