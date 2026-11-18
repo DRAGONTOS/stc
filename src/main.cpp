@@ -46,7 +46,7 @@ int main(int argc, char **argv, char **envp) {
           return 1;
         }
         std::cout << HELP;
-        return 1;
+        return 0;
       }
 
 
@@ -173,5 +173,5 @@ int main(int argc, char **argv, char **envp) {
   Regex(&inputCmd);
   maincommand(&inputCmd);
 
-  return 1;
+  return 0;
 }

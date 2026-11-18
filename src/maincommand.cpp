@@ -440,13 +440,8 @@ void maincommand(cmd *inputCmd) {
      // y\n prompt
      std::cout << "\nIs this ok [y/N]: ";
 
-     char input;
-     std::cin >> input;
-
-     if (std::tolower(input) == 'y') {
-        // handle 'y' or 'Y' input
-     } else if (std::tolower(input) == 'n') {
-        // handle 'n' or 'N' input
+     char input = 'n';
+     if (!(std::cin >> input) || std::tolower(input) != 'y') {
         std::cout << "Operation aborted by the user.\n";
         std::exit(0);
      }
