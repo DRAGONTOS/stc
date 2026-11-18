@@ -49,6 +49,28 @@ int main(int argc, char **argv, char **envp) {
         return 1;
       }
 
+
+      // help msg
+      if (ARGS[i] == "-u") {
+        if (argc < 3 || argv[2][0] == '-') {
+          std::cout << "test" << std::endl;
+          return 1;
+        }
+        std::cout << HELP;
+        return 1;
+      }
+
+      // // update
+      // if (ARGS[i] == "-u") {
+      //   if (argc < 3 || argv[2][0] == '-') {
+      //     std::cout << "test" << std::endl;
+      //     return 1;
+      //   }
+      //   } else {
+      //     std::cerr << HELP;
+      //     return 1;
+      //   }
+
       // collectionid
       if (ARGS[i] == "-c") {
         if (argc < 3 || argv[2][0] == '-') {

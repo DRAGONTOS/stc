@@ -31,6 +31,7 @@ void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& ru
         if (line.find("Success") != std::string::npos) {
             inputCmd->successes++;
             inputCmd->sucids.push_back( line + "\n");
+            std::cout << line << std::endl;
         }
 
         // checks for timed out ones.
@@ -102,8 +103,7 @@ void setup(const std::string& dirname) {
     }
 
     // Creates the default mods folder 
-    if (mkdir(moddir.c_str(), 0777) == 0) {
-    }
+    mkdir(moddir.c_str(), 0777);
 }
 
 void installedmodslist(const std::string& cmd, std::string& sourcefile, std::string& collectionid, std::string& total) {
@@ -148,6 +148,7 @@ void installedmodslist(const std::string& cmd, std::string& sourcefile, std::str
                         // Search for JSON pattern: "id":"1508850027","title":"Mod Name"
                         std::string searchPattern = "\"id\":\"" + modId + "\",\"title\":\"";
                         size_t titlePos = sourcefile.find(searchPattern);
+                        std::cout << modId << std::endl; 
                         
                         if (titlePos != std::string::npos) {
                             size_t titleStart = titlePos + searchPattern.length();
@@ -239,7 +240,7 @@ void installedmodslist(const std::string& cmd, std::string& sourcefile, std::str
 void maincommand(cmd *inputCmd) {
   //setup for steamcmd
   setup(std::string(inputCmd->userHome) + "/.local/share/stc");
-  std::istringstream collectionsource(inputCmd->source);
+  std::istringstream curlhtmlsource(inputCmd->source);
  
   // clears cache
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamapps");
@@ -249,7 +250,7 @@ void maincommand(cmd *inputCmd) {
   std::string sourcefile   = inputCmd->source; // needed for some void functions 
   std::string collectionid = inputCmd->collectionid; 
 
-  std::string collectionline;
+  std::string htmlline;
   std::string title;
   std::string totalmods;
 
@@ -282,25 +283,25 @@ void maincommand(cmd *inputCmd) {
      + ((inputCmd->collectionid.empty()) ? idsm: inputCmd->ids)}.c_str();
 
  // title of mod or collection
- while (std::getline(collectionsource, collectionline)) {
-     size_t startPos2 = collectionline.find(startdesPattern);
+ while (std::getline(curlhtmlsource, htmlline)) {
+     size_t startPos2 = htmlline.find(startdesPattern);
      if (startPos2 != std::string::npos) {
-         size_t endPos2 = collectionline.find(enddesPattern, startPos2);
+         size_t endPos2 = htmlline.find(enddesPattern, startPos2);
          if (endPos2 != std::string::npos) {
              // Extract content between <title> and </title>
-             totalmods = collectionline.substr(
+             totalmods = htmlline.substr(
                  startPos2 + startdesPattern.length(),
                  endPos2 - (startPos2 + startdesPattern.length())
              );
         }
      }
 
-     size_t startPos = collectionline.find(startPattern);
+     size_t startPos = htmlline.find(startPattern);
      if (startPos != std::string::npos) {
-         size_t endPos = collectionline.find(endPattern, startPos);
+         size_t endPos = htmlline.find(endPattern, startPos);
          if (endPos != std::string::npos) {
              // Extract content between <title> and </title>
-             title = collectionline.substr(
+             title = htmlline.substr(
                  startPos + startPattern.length(),
                  endPos - (startPos + startPattern.length())
              );
