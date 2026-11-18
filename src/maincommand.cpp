@@ -733,7 +733,11 @@ void updatecommand(cmd *inputCmd, bool everything) {
         if (tracked.empty()) {
             std::cout << "The manifest in " << inputCmd->dir << " has no mods in it." << std::endl;
         } else {
-            std::cout << "Updating " << tracked.size() << " mods in " << inputCmd->dir << "..." << std::endl;
+            uicolors ui;
+            std::string rule(71, '=');
+            std::cout << "\n" << ui.cyan << rule << ui.reset << "\n\n";
+            std::cout << "Updating: " << ui.green << tracked.size() << " mods" << ui.reset << "\n";
+            std::cout << "Destination: " << ui.cyan << inputCmd->dir << ui.reset << "\n\n";
 
             // a fresh download cache, same as installs use; stale workshop state made the first item of a batch fail
             std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamapps");
@@ -744,12 +748,18 @@ void updatecommand(cmd *inputCmd, bool everything) {
             }
             commands += "+quit\n";
 
-            execAndDisplay(inputCmd, commands, "", "", "", tracked);
+            execAndDisplay(inputCmd, commands, "", "", std::to_string(tracked.size()), tracked);
 
             for (const trackedmod& mod : tracked) {
                 inputCmd->gameid = mod.gameid;
                 filerestort(inputCmd, mod.modid, mod.folder);
             }
+
+            std::cout << "\n" << ui.cyan << rule << ui.reset << "\n\n";
+            std::cout << "Total: " << ui.green << tracked.size() << ui.reset << "\n\n";
+            std::cout << "Finished: " << ui.green << inputCmd->successes << ui.reset << "\n";
+            std::cout << "Timed out: " << ui.yellow << inputCmd->timedout << ui.reset << "\n";
+            std::cout << "Errored: " << ui.red << inputCmd->errors << ui.reset << "\n\n";
         }
     }
 
