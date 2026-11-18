@@ -17,7 +17,6 @@
 #include <thread>
 #include <vector>
 #include <mutex>
-#include <atomic>
 #include "includes/Regex.hpp"
 #include "includes/getHttp.hpp"
 
@@ -48,9 +47,15 @@ struct steamproc {
 
 // spawns steamcmd with an argument array instead of a shell string; the login password and the download commands go over stdin, so they never appear in the process list
 steamproc spawnSteamcmd(const cmd *inputCmd, const std::string& commands) {
+    std::string steamcmd = std::string(inputCmd->userHome) + "/.local/share/stc/Steam/steamcmd.sh";
+    if (!std::filesystem::exists(steamcmd)) {
+        std::cerr << "steamcmd is not installed at " << steamcmd << ", run stc -c or stc -m once to set it up." << std::endl;
+        return {};
+    }
+
     std::vector<std::string> args{
         "sh",
-        std::string(inputCmd->userHome) + "/.local/share/stc/Steam/steamcmd.sh",
+        steamcmd,
         "+force_install_dir",
         std::string(inputCmd->userHome) + "/.cache",
         "+login",
@@ -126,7 +131,7 @@ steamproc spawnSteamcmd(const cmd *inputCmd, const std::string& commands) {
 }
 
 // shows results
-void execAndDisplay(cmd *inputCmd, const std::string& commands, std::atomic<bool>& running) {
+void execAndDisplay(cmd *inputCmd, const std::string& commands) {
     char temp[128];
     steamproc proc = spawnSteamcmd(inputCmd, commands);
 
@@ -149,12 +154,11 @@ void execAndDisplay(cmd *inputCmd, const std::string& commands, std::atomic<bool
         if (line.find("ERROR!") != std::string::npos) {
             inputCmd->errors++;
             // tmp fix for errors.
-            std::ofstream meow{std::string(inputCmd->userHome) + "/.cache/errors.txt"};
-            meow << "start:\n" + line; 
+            std::ofstream meow{std::string(inputCmd->userHome) + "/.cache/errors.txt", std::ios::app};
+            meow << line;
         }
     }
     proc.close();
-    running = false;
 }
 
 // checks if steamexists
@@ -195,9 +199,9 @@ void extractTarGz(const std::string& file, const std::string& outputDir) {
 
 //setup for steamcmd
 void setup(const std::string& dirname) {
-    const char* userHome    = getenv("HOME");
+    std::string home        = getenv("HOME") == nullptr ? "/tmp" : getenv("HOME");
     std::string steamdir    = dirname + "/Steam";
-    std::string downloaddir = std::string(userHome) + "/.cache/steamcmd_linux.tar.gz";
+    std::string downloaddir = home + "/.cache/steamcmd_linux.tar.gz";
     std::string moddir      = dirname + "/mods";
 
     // checks if the steamdir exists and or if steamcmd is installed or not
@@ -205,7 +209,7 @@ void setup(const std::string& dirname) {
         } else {
             try {
                 downloadFile("https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz", downloaddir);
-                extractTarGz(downloaddir, std::string(userHome) + "/.local/share/stc/Steam");
+                extractTarGz(downloaddir, home + "/.local/share/stc/Steam");
             } catch (const std::exception& e) {
                 std::cerr << "Error installing steamcmd: " << e.what() << std::endl;
             }
@@ -350,8 +354,7 @@ void maincommand(cmd *inputCmd) {
   // runs steamcmd
   try {
      std::cout << "=======================================================================\n\n";
-     std::atomic<bool> running(true); 
-     
+
      if (!inputCmd->collectionid.empty()) {
         std::cout << "Installing collection: " << title << "\nDestination: " << inputCmd->dir << std::endl;
         std::cout << "\nCollection Summary:\n Installing:         " << totalmods << " Mods" << std::endl;
@@ -369,14 +372,13 @@ void maincommand(cmd *inputCmd) {
      }
      std::cout << std::endl;
 
-     std::thread installedmods([&running, inputCmd, &commands, &sourcefile, &collectionid, &totalmods]() {
+     std::thread installedmods([&inputCmd, &commands, &sourcefile, &collectionid, &totalmods]() {
      installedmodslist(inputCmd, commands, sourcefile, collectionid, totalmods);
      });
 
      installedmods.join();
-     execAndDisplay(inputCmd, commands, running);
+     execAndDisplay(inputCmd, commands);
 
-     running = false; 
      std::cout << "\n=======================================================================" << std::flush;
   } catch (const std::runtime_error& e) {
      std::cerr << "\nError: " << e.what() << "\n"; 
@@ -490,8 +492,7 @@ void updatecommand(cmd *inputCmd) {
             }
             commands += "+quit\n";
 
-            std::atomic<bool> running(true);
-            execAndDisplay(inputCmd, commands, running);
+            execAndDisplay(inputCmd, commands);
 
             for (const trackedmod& mod : tracked) {
                 inputCmd->gameid = mod.gameid;

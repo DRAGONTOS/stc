@@ -20,10 +20,11 @@ std::string workshoptitle(const std::string& sourcefile) {
         if (start == std::string::npos) {
             continue;
         }
-        std::size_t end = htmlLine.find_last_not_of(" \t\n\r\">");
-        if (end != std::string::npos) {
-            return htmlLine.substr(start + 10, end - start - 16);
+        std::size_t end = htmlLine.find("</title>", start);
+        if (end == std::string::npos) {
+            continue;
         }
+        return htmlLine.substr(start + 10, end - (start + 10));
     }
     return "";
 }

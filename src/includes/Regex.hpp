@@ -4,7 +4,8 @@
 #include <vector>
 // all the var's
 struct cmd {
-const char* userHome  = getenv("HOME");
+// the user's home; a missing HOME falls back to /tmp so nothing builds a std::string from null
+std::string userHome = getenv("HOME") == nullptr ? "/tmp" : getenv("HOME");
 // buffers
 std::string ids;
 std::string source;
