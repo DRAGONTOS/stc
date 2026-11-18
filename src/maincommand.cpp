@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <fcntl.h>
 #include <poll.h>
 #include <spawn.h>
 #include <unistd.h>
@@ -47,8 +48,8 @@ struct steamproc {
     }
 };
 
-// spawns steamcmd with an argument array instead of a shell string; the login password and the download commands go over stdin, so they never appear in the process list
-steamproc spawnSteamcmd(const cmd *inputCmd, const std::string& commands) {
+// spawns steamcmd with an argument array instead of a shell string; the login password and the download commands go over stdin, so they never appear in the process list; with quietstderr its own error chatter goes to the error log instead of the terminal
+steamproc spawnSteamcmd(const cmd *inputCmd, const std::string& commands, bool quietstderr = false) {
     std::string steamcmd = std::string(inputCmd->userHome) + "/.local/share/stc/Steam/steamcmd.sh";
     if (!std::filesystem::exists(steamcmd)) {
         std::cerr << "steamcmd is not installed at " << steamcmd << ", run stc -c or stc -m once to set it up." << std::endl;
@@ -92,6 +93,10 @@ steamproc spawnSteamcmd(const cmd *inputCmd, const std::string& commands) {
     posix_spawn_file_actions_init(&actions);
     posix_spawn_file_actions_adddup2(&actions, inpipe[0], STDIN_FILENO);
     posix_spawn_file_actions_adddup2(&actions, outpipe[1], STDOUT_FILENO);
+    if (quietstderr) {
+        std::string errorlog = std::string(inputCmd->userHome) + "/.cache/errors.txt";
+        posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, errorlog.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0644);
+    }
     posix_spawn_file_actions_addclose(&actions, outpipe[0]);
     posix_spawn_file_actions_addclose(&actions, inpipe[1]);
     posix_spawn_file_actions_addclose(&actions, inpipe[0]);
@@ -144,6 +149,24 @@ struct trackedmod {
     std::string gameid;
     std::string modid;
     std::string folder;
+};
+
+// colors for terminal output, all empty when stdout is not a terminal
+struct uicolors {
+    bool tty = false;
+    std::string green, red, yellow, cyan, bold, reset;
+
+    uicolors() {
+        tty = isatty(STDOUT_FILENO) == 1;
+        if (tty) {
+            green  = "\033[32m";
+            red    = "\033[31m";
+            yellow = "\033[33m";
+            cyan   = "\033[36m";
+            bold   = "\033[1m";
+            reset  = "\033[0m";
+        }
+    }
 };
 
 // percent shown in a steamcmd progress fragment, -1 when the fragment has none
@@ -229,11 +252,12 @@ std::string stripescapes(const std::string& text) {
 
 // shows the steamcmd output live and counts successes, timeouts and errors; on a terminal it draws a dnf-style status line with a progress bar, when piped it prints one line per finished item
 void execAndDisplay(cmd *inputCmd, const std::string& commands, const std::string& sourcefile, const std::string& collectionid, const std::string& total, const std::vector<trackedmod>& knownmods = {}) {
-    bool tty = isatty(STDOUT_FILENO) == 1;
-    const char* cok   = tty ? "\033[32m" : "";
-    const char* cbad  = tty ? "\033[31m" : "";
-    const char* chead = tty ? "\033[36m" : "";
-    const char* cend  = tty ? "\033[0m" : "";
+    uicolors ui;
+    bool tty = ui.tty;
+    const char* cok   = ui.green.c_str();
+    const char* cbad  = ui.red.c_str();
+    const char* chead = ui.cyan.c_str();
+    const char* cend  = ui.reset.c_str();
     int totalitems = 0;
     try {
         totalitems = std::stoi(total);
@@ -243,8 +267,7 @@ void execAndDisplay(cmd *inputCmd, const std::string& commands, const std::strin
         totalitems = 0;
     }
 
-    char temp[1024];
-    steamproc proc = spawnSteamcmd(inputCmd, commands);
+    steamproc proc = spawnSteamcmd(inputCmd, commands, tty);
     int totalmods = 1;
     int doneitems = 0;
     int percent = -1;
@@ -528,13 +551,15 @@ void maincommand(cmd *inputCmd) {
 
   // runs steamcmd
   try {
-     std::cout << "=======================================================================\n\n";
+     uicolors ui;
+     std::string rule(71, '=');
+     std::cout << ui.cyan << rule << ui.reset << "\n\n";
 
      if (!inputCmd->collectionid.empty()) {
-        std::cout << "Installing collection: " << title << "\nDestination: " << inputCmd->dir << std::endl;
-        std::cout << "\nCollection Summary:\n Installing:         " << totalmods << " Mods" << std::endl;
+        std::cout << "Installing collection: " << ui.bold << title << ui.reset << "\nDestination: " << ui.cyan << inputCmd->dir << ui.reset << std::endl;
+        std::cout << "\n" << ui.cyan << "Collection Summary:" << ui.reset << "\n Installing:         " << ui.green << totalmods << " Mods" << ui.reset << std::endl;
      } else {
-        std::cout << "Installing mod: " << title << "\n";
+        std::cout << "Installing mod: " << ui.bold << title << ui.reset << "\n";
      }
      
      // y\n prompt
@@ -549,21 +574,14 @@ void maincommand(cmd *inputCmd) {
 
      execAndDisplay(inputCmd, commands, sourcefile, inputCmd->collectionid, totalmods);
 
-     std::cout << "\n=======================================================================" << std::flush;
+     std::cout << "\n" << ui.cyan << rule << ui.reset << std::flush;
   } catch (const std::runtime_error& e) {
-     std::cerr << "\nError: " << e.what() << "\n"; 
+     std::cerr << "\nError: " << e.what() << "\n";
   }
 
   // mod or collection?
-  std::string total = (inputCmd->collectionid.empty()) ? "Total: 1" : "Total: " + std::to_string(inputCmd->totalmods) + "\n";
-  std::string colm  = (inputCmd->collectionid.empty()) ? R"(Mod)"   : R"(Collection)"; 
-
-  // shows how much and what has downloaded
-  std::string mods = total  
-    + "\n"
-    + "Finished: "  + std::to_string(inputCmd->successes)     + "\n"
-    + "Timed out: " + std::to_string(inputCmd->timedout)      + "\n"
-    + "Errored: "   + std::to_string(inputCmd->errors)        + "\n" + "\n";
+  std::string colm  = (inputCmd->collectionid.empty()) ? R"(Mod)"   : R"(Collection)";
+  uicolors ui;
 
     if (!inputCmd->collectionid.empty()) {
      //start the threads
@@ -579,7 +597,17 @@ void maincommand(cmd *inputCmd) {
             Modname(inputCmd, nya);  // Process directly instead of in thread
         }
     }
-    std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd->dir + "\n";
+    std::cout << "\n\n";
+    if (!inputCmd->collectionid.empty()) {
+        std::cout << "Total: " << ui.green << inputCmd->totalmods << ui.reset << "\n\n";
+    } else {
+        std::cout << "Total: 1\n";
+    }
+    std::cout << "Finished: "  << ui.green  << inputCmd->successes << ui.reset << "\n";
+    std::cout << "Timed out: " << ui.yellow << inputCmd->timedout  << ui.reset << "\n";
+    std::cout << "Errored: "   << ui.red    << inputCmd->errors    << ui.reset << "\n\n";
+
+    std::cout << colm << " has been downloaded too: " << ui.cyan << inputCmd->dir << ui.reset << "\n";
 }
 
 // runs a command with inherited stdio and waits for it; returns its exit status or -1 when it could not be spawned
@@ -615,8 +643,8 @@ void updatecommand(cmd *inputCmd, bool everything) {
     }
 
     std::cout << "Checking for a steamcmd update..." << std::endl;
-    steamproc proc = spawnSteamcmd(inputCmd, "+quit\n");
     bool tty = isatty(STDOUT_FILENO) == 1;
+    steamproc proc = spawnSteamcmd(inputCmd, "+quit\n", tty);
     if (proc.out != nullptr) {
         int outfd = fileno(proc.out);
         std::string rewritten;
