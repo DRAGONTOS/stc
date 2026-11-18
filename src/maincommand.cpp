@@ -203,6 +203,30 @@ std::string numberafter(const std::string& line, const std::string& marker) {
     return line.substr(begin, end - begin);
 }
 
+// removes the ansi color escapes steamcmd writes, for the error log
+std::string stripescapes(const std::string& text) {
+    std::string clean;
+    std::size_t at = 0;
+    while (at < text.size()) {
+        if (text[at] == '\033') {
+            at++;
+            if (at < text.size() && text[at] == '[') {
+                at++;
+                while (at < text.size() && !std::isalpha(static_cast<unsigned char>(text[at]))) {
+                    at++;
+                }
+                if (at < text.size()) {
+                    at++;
+                }
+            }
+        } else {
+            clean += text[at];
+            at++;
+        }
+    }
+    return clean;
+}
+
 // shows the steamcmd output live and counts successes, timeouts and errors; on a terminal it draws a dnf-style status line with a progress bar, when piped it prints one line per finished item
 void execAndDisplay(cmd *inputCmd, const std::string& commands, const std::string& sourcefile, const std::string& collectionid, const std::string& total, const std::vector<trackedmod>& knownmods = {}) {
     bool tty = isatty(STDOUT_FILENO) == 1;
@@ -280,7 +304,7 @@ void execAndDisplay(cmd *inputCmd, const std::string& commands, const std::strin
             inputCmd->errors++;
             // tmp fix for errors.
             std::ofstream meow{std::string(inputCmd->userHome) + "/.cache/errors.txt", std::ios::app};
-            meow << text;
+            meow << stripescapes(text) << "\n";
         }
 
         // names the downloaded items
@@ -682,6 +706,9 @@ void updatecommand(cmd *inputCmd, bool everything) {
             std::cout << "The manifest in " << inputCmd->dir << " has no mods in it." << std::endl;
         } else {
             std::cout << "Updating " << tracked.size() << " mods in " << inputCmd->dir << "..." << std::endl;
+
+            // a fresh download cache, same as installs use; stale workshop state made the first item of a batch fail
+            std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamapps");
 
             std::string commands;
             for (const trackedmod& mod : tracked) {
