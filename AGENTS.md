@@ -64,10 +64,8 @@ Every install appends `<gameid> <modid> <foldername>` lines to `.stc-manifest` i
 
 ## Gotchas
 
-- `CMakeLists.txt` sets `CMAKE_CXX_FLAGS_RELEASE "-02"` — that is a zero, not `-O2`, so the flag silently does nothing. There is also a `DCKMAKE_BUILD_TYPE` typo in the build-type default. Fix both together if touched, and tell the owner, since release builds currently get no optimization.
-- `make all` → `release` configures a **Debug** build. Optimized builds are not actually wired up anywhere.
-- `main()` returns 1 even on success paths; nothing currently checks the exit code, but don't copy that pattern into new code.
 - `Regex` scrapes live HTML from steamcommunity.com; layout changes on Valve's side break it silently (zero mods found, not an error). Debug scraping failures by dumping `inputCmd->source` first.
 - `installedmodslist` matches ids against `"id":"...","title":"..."` JSON in the page source; a missing title means the id was never on the page, usually a scrape miss upstream.
 - The steamcmd install lives in `~/.local/share/stc` and the cache in `~/.cache/steamapps` is wiped on every run — never point these at a directory the user owns for something else.
 - Network check uses `gethostbyname("google.com")`; it is blocking and DNS-only, so a captive portal passes it and curl still fails later.
+- steamcmd's first boot runs a self-update against Valve's CDN and that check can hang for many minutes with no output before it retries; it looks like a hang in stc but is not.
