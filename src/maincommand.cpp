@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -11,6 +12,8 @@
 #include <stdexcept>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/time.h>
+#include <poll.h>
 #include <spawn.h>
 #include <unistd.h>
 #include <string>
@@ -136,67 +139,243 @@ struct trackedmod {
     std::string folder;
 };
 
-// cuts the workshop item id out of a steamcmd download line, empty when the line has none
-std::string itemid(const std::string& line, const std::string& tail) {
-    std::size_t itemPos = line.find(" item ");
-    if (itemPos == std::string::npos) {
-        return "";
+// percent shown in a steamcmd progress fragment, -1 when the fragment has none
+int linepercent(const std::string& segment) {
+    std::size_t pct = segment.find('%');
+    if (pct != std::string::npos) {
+        std::size_t begin = pct;
+        while (begin > 0 && (std::isdigit(static_cast<unsigned char>(segment[begin - 1])) || segment[begin - 1] == '.')) {
+            begin--;
+        }
+        if (begin < pct) {
+            try {
+                int value = std::stoi(segment.substr(begin, pct - begin));
+                if (value >= 0 && value <= 100) {
+                    return value;
+                }
+            } catch (...) {
+            }
+        }
     }
-    std::size_t endPos = line.find(tail, itemPos);
-    if (endPos == std::string::npos) {
-        return "";
+
+    std::size_t mark = segment.find("progress: ");
+    if (mark != std::string::npos) {
+        std::size_t begin = mark + 10;
+        std::size_t end = begin;
+        while (end < segment.size() && (std::isdigit(static_cast<unsigned char>(segment[end])) || segment[end] == '.')) {
+            end++;
+        }
+        if (end > begin) {
+            try {
+                double value = std::stod(segment.substr(begin, end - begin));
+                int whole = static_cast<int>(value);
+                if (whole >= 0 && whole <= 100) {
+                    return whole;
+                }
+            } catch (...) {
+            }
+        }
     }
-    return line.substr(itemPos + 6, endPos - (itemPos + 6));
+    return -1;
 }
 
-// shows the steamcmd output live, counts successes, timeouts and errors, and names the items from the workshop page data or the tracked manifest
+// the number after a marker in a steamcmd line, empty when there is none
+std::string numberafter(const std::string& line, const std::string& marker) {
+    std::size_t at = line.find(marker);
+    if (at == std::string::npos) {
+        return "";
+    }
+    std::size_t begin = at + marker.size();
+    while (begin < line.size() && !std::isdigit(static_cast<unsigned char>(line[begin]))) {
+        begin++;
+    }
+    std::size_t end = begin;
+    while (end < line.size() && std::isdigit(static_cast<unsigned char>(line[end]))) {
+        end++;
+    }
+    return line.substr(begin, end - begin);
+}
+
+// shows the steamcmd output live and counts successes, timeouts and errors; on a terminal it draws a dnf-style status line with a progress bar, when piped it prints one line per finished item
 void execAndDisplay(cmd *inputCmd, const std::string& commands, const std::string& sourcefile, const std::string& collectionid, const std::string& total, const std::vector<trackedmod>& knownmods = {}) {
+    bool tty = isatty(STDOUT_FILENO) == 1;
+    const char* cok   = tty ? "\033[32m" : "";
+    const char* cbad  = tty ? "\033[31m" : "";
+    const char* chead = tty ? "\033[36m" : "";
+    const char* cend  = tty ? "\033[0m" : "";
+    int totalitems = 0;
+    try {
+        totalitems = std::stoi(total);
+    } catch (...) {
+    }
+    if (totalitems < 0) {
+        totalitems = 0;
+    }
+
     char temp[1024];
     steamproc proc = spawnSteamcmd(inputCmd, commands);
     int totalmods = 1;
+    int doneitems = 0;
+    int percent = -1;
+    std::string currentname;
 
-    while (proc.out != nullptr && fgets(temp, sizeof(temp), proc.out) != nullptr) {
-        std::string line(temp);
+    auto namefor = [&](const std::string& modId) {
+        for (const trackedmod& known : knownmods) {
+            if (known.modid == modId) {
+                return known.folder;
+            }
+        }
+        return collectionid.empty() ? workshoptitle(sourcefile) : jsontitle(sourcefile, modId);
+    };
 
+    // the status line, redrawn in place
+    auto drawline = [&]() {
+        if (!tty) {
+            return;
+        }
+        std::cout << "\r\033[K";
+        if (totalitems > 0) {
+            int width = 30;
+            int filled = doneitems * width / totalitems;
+            if (filled > width) {
+                filled = width;
+            }
+            std::cout << "[";
+            for (int at = 0; at < width; ++at) {
+                std::cout << (at < filled ? '#' : '-');
+            }
+            std::cout << "] " << doneitems << "/" << totalitems;
+        }
+        if (percent >= 0) {
+            std::cout << "  " << percent << "%";
+        }
+        if (!currentname.empty()) {
+            std::cout << "  " << chead << currentname << cend;
+        }
+        std::cout << std::flush;
+    };
+
+    // one permanent result line per finished item
+    auto drawresult = [&](bool ok, const std::string& name) {
+        if (!tty) {
+            return;
+        }
+        std::cout << "\r\033[K" << (ok ? cok : cbad) << (ok ? "ok " : "err") << cend << "  " << name << std::endl;
+    };
+
+    // one terminated line of steamcmd output
+    auto handleline = [&](const std::string& text) {
         // counts for the summary
-        if (line.find("Timeout") != std::string::npos) {
+        if (text.find("Timeout") != std::string::npos) {
             inputCmd->timedout++;
         }
-        if (line.find("ERROR!") != std::string::npos) {
+        if (text.find("ERROR!") != std::string::npos) {
             inputCmd->errors++;
             // tmp fix for errors.
             std::ofstream meow{std::string(inputCmd->userHome) + "/.cache/errors.txt", std::ios::app};
-            meow << line;
+            meow << text;
         }
 
         // names the downloaded items
-        if (line.find("Download") != std::string::npos && (line.find("Success") != std::string::npos || line.find("ERROR") != std::string::npos)) {
-            bool ok = line.find("Success") != std::string::npos;
-            if (ok) {
+        if (text.find("Download") != std::string::npos) {
+            std::string modId = numberafter(text, " item ");
+            std::string idname = namefor(modId);
+
+            if (text.find("Success") != std::string::npos) {
                 inputCmd->successes++;
-                inputCmd->sucids.push_back(line + "\n");
-            }
+                inputCmd->sucids.push_back(text + "\n");
 
-            std::string modId = itemid(line, ok ? " to " : " failed ");
-            std::string idname;
-            for (const trackedmod& known : knownmods) {
-                if (known.modid == modId) {
-                    idname = known.folder;
-                    break;
+                if (!tty) {
+                    if (!collectionid.empty()) {
+                        std::cout << "[" << totalmods << "/" << total << "] Successfully downloaded: " << idname << std::endl;
+                        totalmods++;
+                    } else {
+                        std::cout << "Successfully downloaded: " << idname << std::endl;
+                    }
+                } else {
+                    drawresult(true, idname);
                 }
-            }
-            if (idname.empty()) {
-                idname = collectionid.empty() ? workshoptitle(sourcefile) : jsontitle(sourcefile, modId);
-            }
-
-            const std::string& label = ok ? "Successfully downloaded: " : "Error downloading: ";
-            if (!collectionid.empty()) {
-                std::cout << "[" << totalmods << "/" << total << "] " << label << idname << std::endl;
-                totalmods++;
+                doneitems++;
+                percent = -1;
+                currentname.clear();
+                drawline();
+            } else if (text.find("ERROR") != std::string::npos) {
+                if (!tty) {
+                    if (!collectionid.empty()) {
+                        std::cout << "[" << totalmods << "/" << total << "] Error downloading: " << idname << std::endl;
+                        totalmods++;
+                    } else {
+                        std::cout << "Error downloading: " << idname << std::endl;
+                    }
+                } else {
+                    drawresult(false, idname);
+                }
+                doneitems++;
+                percent = -1;
+                currentname.clear();
+                drawline();
             } else {
-                std::cout << label << idname << std::endl;
+                // an item started downloading
+                currentname = idname.empty() ? modId : idname;
+                percent = -1;
+                drawline();
+            }
+        } else {
+            int seen = linepercent(text);
+            if (seen >= 0) {
+                percent = seen;
+                drawline();
             }
         }
+    };
+
+    // steamcmd rewrites its progress with carriage returns and no newline, so bytes are read as they arrive; a \r replaces the line being rewritten, a \n ends it
+    int outfd = proc.out == nullptr ? -1 : fileno(proc.out);
+    std::string rewritten;
+    std::string piece;
+
+    while (proc.out != nullptr) {
+        struct pollfd watcher { outfd, POLLIN, 0 };
+        if (poll(&watcher, 1, 500) <= 0) {
+            continue;
+        }
+
+        char chunk[1024];
+        ssize_t got = read(outfd, chunk, sizeof(chunk));
+        if (got <= 0) {
+            break;
+        }
+        std::string data(chunk, got);
+
+        std::size_t at = 0;
+        while (at < data.size()) {
+            char now = data[at];
+            if (now == '\r') {
+                rewritten = piece;
+                piece.clear();
+            } else if (now == '\n') {
+                handleline(rewritten + piece);
+                rewritten.clear();
+                piece.clear();
+            } else {
+                piece += now;
+            }
+            at++;
+        }
+
+        // the unterminated rest is steamcmd's live redraw; show its percent if it has one
+        int live = linepercent(piece);
+        if (live < 0) {
+            live = linepercent(rewritten);
+        }
+        if (live >= 0) {
+            percent = live;
+            drawline();
+        }
+    }
+
+    if (tty) {
+        std::cout << "\r\033[K" << std::flush;
     }
     proc.close();
 }
