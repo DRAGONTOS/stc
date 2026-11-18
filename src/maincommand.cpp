@@ -297,7 +297,6 @@ void installedmodslist(const cmd *inputCmd, const std::string& commands, const s
             // Extract failed mod ID (e.g. "818773962")
             size_t itemPos    = errorLine.find(" item ");
             size_t failedPos  = errorLine.find(" failed ");
-            std::string modId = errorLine.substr(itemPos, failedPos);
             
             if (itemPos != std::string::npos && failedPos != std::string::npos) {
                 std::string modId = errorLine.substr(
