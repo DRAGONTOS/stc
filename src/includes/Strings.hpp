@@ -6,6 +6,7 @@ LISTING FLAGS:
     -c:           Install a collection.
     -m:           Install a specific mod.
     -h:           For the entire help msg.
+    -u:           Update steamcmd and the mods in a folder.
 )#";
 
 const std::string_view HELP = R"#(usage:  Steam Collector [flags] [<command> [args]]
@@ -13,10 +14,13 @@ LISTING FLAGS:
     -c:           Install a collection.
     -m:           Install a specific mod.
     -h:           For the entire help msg.
- 
+    -u:           Update steamcmd and the mods in a folder.
+
  LISTING ARGS:
     1: Should be the collectionid/modid.
     2: Could be the username if required.
     3: Could be the password if required.
     4: The dir to where you want to download the mods.
+
+    For -u the 1. arg is the folder to update, default is the mods folder.
 )#";

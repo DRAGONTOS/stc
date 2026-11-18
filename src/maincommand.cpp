@@ -16,6 +16,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <mutex>
 #include <atomic>
 #include "includes/Regex.hpp"
 #include "includes/getHttp.hpp"
@@ -47,7 +48,7 @@ struct steamproc {
 };
 
 // spawns steamcmd with an argument array instead of a shell string; the login password and the download commands go over stdin, so they never appear in the process list
-steamproc spawnSteamcmd(const cmd *inputCmd) {
+steamproc spawnSteamcmd(const cmd *inputCmd, const std::string& commands) {
     std::vector<std::string> args{
         "sh",
         std::string(inputCmd->userHome) + "/.local/share/stc/Steam/steamcmd.sh",
@@ -61,22 +62,7 @@ steamproc spawnSteamcmd(const cmd *inputCmd) {
     if (!inputCmd->pass.empty()) {
         stdinlines += inputCmd->pass + "\n";
     }
-
-    if (!inputCmd->collectionid.empty()) {
-        std::istringstream ids(inputCmd->ids);
-        for (std::string idline; std::getline(ids, idline); ) {
-            if (!idline.empty() && idline.back() == '\\') {
-                idline.pop_back();
-            }
-            if (idline.empty() || idline.find("+quit") != std::string::npos) {
-                continue;
-            }
-            stdinlines += idline + "\n";
-        }
-    } else {
-        stdinlines += "+workshop_download_item " + inputCmd->gameid + " " + inputCmd->modid + "\n";
-    }
-    stdinlines += "+quit\n";
+    stdinlines += commands;
 
     int outpipe[2];
     int inpipe[2];
@@ -141,9 +127,9 @@ steamproc spawnSteamcmd(const cmd *inputCmd) {
 }
 
 // shows results
-void execAndDisplay(cmd *inputCmd, std::atomic<bool>& running) {
+void execAndDisplay(cmd *inputCmd, const std::string& commands, std::atomic<bool>& running) {
     char temp[128];
-    steamproc proc = spawnSteamcmd(inputCmd);
+    steamproc proc = spawnSteamcmd(inputCmd, commands);
 
     while (proc.out != nullptr && fgets(temp, sizeof(temp), proc.out) != nullptr) {
         std::string line(temp);  
@@ -228,10 +214,10 @@ void setup(const std::string& dirname) {
     mkdir(moddir.c_str(), 0777);
 }
 
-void installedmodslist(const cmd *inputCmd, const std::string& sourcefile, const std::string& collectionid, const std::string& total) {
+void installedmodslist(const cmd *inputCmd, const std::string& commands, const std::string& sourcefile, const std::string& collectionid, const std::string& total) {
     int totalmods = 1;
 
-    steamproc proc = spawnSteamcmd(inputCmd);
+    steamproc proc = spawnSteamcmd(inputCmd, commands);
 
     char buffer[256];
     while (proc.out != nullptr && fgets(buffer, sizeof(buffer), proc.out) != nullptr) {
@@ -367,8 +353,26 @@ void maincommand(cmd *inputCmd) {
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamapps");
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamcmd_linux.tar.gz");
 
-  std::string sourcefile   = inputCmd->source; // needed for some void functions 
-  std::string collectionid = inputCmd->collectionid; 
+  std::string sourcefile   = inputCmd->source; // needed for some void functions
+  std::string collectionid = inputCmd->collectionid;
+
+  // the steamcmd stdin commands; the password, if any, is added by spawnSteamcmd
+  std::string commands;
+  if (!inputCmd->collectionid.empty()) {
+      std::istringstream ids(inputCmd->ids);
+      for (std::string idline; std::getline(ids, idline); ) {
+          if (!idline.empty() && idline.back() == '\\') {
+              idline.pop_back();
+          }
+          if (idline.empty() || idline.find("+quit") != std::string::npos) {
+              continue;
+          }
+          commands += idline + "\n";
+      }
+  } else {
+      commands += "+workshop_download_item " + inputCmd->gameid + " " + inputCmd->modid + "\n";
+  }
+  commands += "+quit\n";
 
   std::string htmlline;
   std::string title;
@@ -447,12 +451,12 @@ void maincommand(cmd *inputCmd) {
      }
      std::cout << std::endl;
 
-     std::thread installedmods([&running, inputCmd, &sourcefile, &collectionid, &totalmods]() {
-     installedmodslist(inputCmd, sourcefile, collectionid, totalmods);
+     std::thread installedmods([&running, inputCmd, &commands, &sourcefile, &collectionid, &totalmods]() {
+     installedmodslist(inputCmd, commands, sourcefile, collectionid, totalmods);
      });
 
      installedmods.join();
-     execAndDisplay(inputCmd, running);
+     execAndDisplay(inputCmd, commands, running);
 
      running = false; 
      std::cout << "\n=======================================================================" << std::flush;
@@ -486,4 +490,117 @@ void maincommand(cmd *inputCmd) {
         }
     }
     std::cout << "\n\n" + mods + colm + " has been downloaded too: " + inputCmd->dir + "\n";
+}
+
+// runs a command with inherited stdio and waits for it; returns its exit status or -1 when it could not be spawned
+int runwait(const std::vector<std::string>& args) {
+    std::vector<char*> argv;
+    for (const std::string& arg : args) {
+        argv.push_back(const_cast<char*>(arg.c_str()));
+    }
+    argv.push_back(nullptr);
+
+    posix_spawn_file_actions_t actions;
+    posix_spawn_file_actions_init(&actions);
+
+    pid_t pid;
+    int spawned = posix_spawnp(&pid, args[0].c_str(), &actions, nullptr, argv.data(), environ);
+    posix_spawn_file_actions_destroy(&actions);
+    if (spawned != 0) {
+        return -1;
+    }
+
+    int status;
+    waitpid(pid, &status, 0);
+    return status;
+}
+
+// a mod recorded in a .stc-manifest
+struct trackedmod {
+    std::string gameid;
+    std::string modid;
+    std::string folder;
+};
+
+// -u: refreshes steamcmd, re-downloads the mods tracked in the destination's .stc-manifest into their existing folders and updates a stc git checkout
+void updatecommand(cmd *inputCmd) {
+    struct stat sb;
+    if (stat(inputCmd->dir.c_str(), &sb) != 0 || !S_ISDIR(sb.st_mode)) {
+        inputCmd->dir = std::string(inputCmd->userHome) + "/.local/share/stc/mods";
+    }
+
+    std::cout << "Checking for a steamcmd update..." << std::endl;
+    steamproc proc = spawnSteamcmd(inputCmd, "+quit\n");
+    char temp[128];
+    while (proc.out != nullptr && fgets(temp, sizeof(temp), proc.out) != nullptr) {
+        std::cout << temp;
+    }
+    proc.close();
+
+    std::ifstream manifest{std::filesystem::path(inputCmd->dir) / ".stc-manifest"};
+    if (!manifest) {
+        std::cout << "Nothing is tracked in " << inputCmd->dir << ", run stc -c or stc -m first." << std::endl;
+    } else {
+        std::vector<trackedmod> tracked;
+        std::string line;
+        while (std::getline(manifest, line)) {
+            std::istringstream entry(line);
+            trackedmod mod;
+            if (!(entry >> mod.gameid >> mod.modid >> mod.folder)) {
+                continue;
+            }
+            bool known = false;
+            for (const trackedmod& old : tracked) {
+                if (old.gameid == mod.gameid && old.modid == mod.modid) {
+                    known = true;
+                    break;
+                }
+            }
+            if (!known) {
+                tracked.push_back(mod);
+            }
+        }
+
+        if (tracked.empty()) {
+            std::cout << "The manifest in " << inputCmd->dir << " has no mods in it." << std::endl;
+        } else {
+            std::cout << "Updating " << tracked.size() << " mods in " << inputCmd->dir << "..." << std::endl;
+
+            std::string commands;
+            for (const trackedmod& mod : tracked) {
+                commands += "+workshop_download_item " + mod.gameid + " " + mod.modid + "\n";
+            }
+            commands += "+quit\n";
+
+            std::atomic<bool> running(true);
+            execAndDisplay(inputCmd, commands, running);
+
+            for (const trackedmod& mod : tracked) {
+                inputCmd->gameid = mod.gameid;
+                filerestort(inputCmd, mod.modid, mod.folder);
+            }
+        }
+    }
+
+    // stc itself: a git checkout can pull and rebuild, a packaged install belongs to the package manager
+    std::filesystem::path repo;
+    std::filesystem::path here = std::filesystem::read_symlink("/proc/self/exe").parent_path();
+    for (std::filesystem::path walk = here; !walk.empty(); walk = walk.parent_path()) {
+        if (std::filesystem::exists(walk / ".git")) {
+            repo = walk;
+            break;
+        }
+    }
+
+    if (!repo.empty()) {
+        std::cout << "\nstc itself: git checkout at " << repo << ", pulling and rebuilding..." << std::endl;
+        if (runwait({"git", "-C", repo.string(), "pull", "--ff-only"}) == 0) {
+            runwait({"make", "-C", repo.string(), "all"});
+            std::cout << "Rebuilt. Run sudo make install to update the installed binary." << std::endl;
+        } else {
+            std::cerr << "git pull failed; resolve it by hand and rebuild with make all." << std::endl;
+        }
+    } else {
+        std::cout << "\nstc itself was installed from a package; update it the way you installed it (pacman -Syu, the deb or rpm, or a fresh make all from source)." << std::endl;
+    }
 }

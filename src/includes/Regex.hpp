@@ -33,4 +33,5 @@ size_t threadsCompleted = 0;
 
 void Regex(cmd *inputCmd);
 void Modname(cmd *inputCmd, size_t index);
+void filerestort(cmd *inputCmd, std::string idnumber, std::string idname);
 #endif

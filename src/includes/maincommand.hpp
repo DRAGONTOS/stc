@@ -3,4 +3,5 @@
 #include "Regex.hpp"
 #include "getHttp.hpp"
 void maincommand(cmd *inputCmd);
+void updatecommand(cmd *inputCmd);
 #endif

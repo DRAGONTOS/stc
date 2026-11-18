@@ -1,9 +1,11 @@
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <mutex>
 #include <ostream>
 #include <string>
-#include <sstream> 
+#include <sstream>
 #include <thread>
 #include "includes/Regex.hpp"
 
@@ -38,6 +40,29 @@ void Regex(cmd* inputCmd) {
     inputCmd->ids += "+quit\n";
 }
 
+// guards the appends to a .stc-manifest from the install threads
+static std::mutex manifestmutex;
+
+// records an installed mod in the destination folder's .stc-manifest as gameid, modid and the folder name it lives in, so -u can update it in place
+void recordinstall(const cmd *inputCmd, const std::string& idnumber, const std::string& idname) {
+    std::lock_guard<std::mutex> lock(manifestmutex);
+
+    std::filesystem::path manifestpath = std::filesystem::path(inputCmd->dir) / ".stc-manifest";
+    std::string entry = std::string(inputCmd->gameid) + " " + idnumber + " " + idname;
+
+    std::ifstream existing{manifestpath};
+    std::string line;
+    while (std::getline(existing, line)) {
+        if (line == entry) {
+            return;
+        }
+    }
+    existing.close();
+
+    std::ofstream manifest{manifestpath, std::ios::app};
+    manifest << entry << "\n";
+}
+
 // renames modid to modname gathered from the html's metedata
 void filerestortthreaded(cmd *inputCmd, std::string idnumber, std::string idname) {
   std::filesystem::path steamdir  = std::string(inputCmd->userHome) + "/.cache/steamapps/workshop/content/" + inputCmd->gameid + "/" + idnumber;
@@ -52,6 +77,7 @@ for (int attempt = 0; attempt < 3; ++attempt) {
           }
           std::this_thread::sleep_for(std::chrono::milliseconds(100));
           std::filesystem::rename(steamdir, modname);
+          recordinstall(inputCmd, idnumber, idname);
           inputCmd->threadsCompleted++;
           break;
       } else {
@@ -86,6 +112,7 @@ void filerestort(cmd *inputCmd, std::string idnumber, std::string idname) {
               std::filesystem::remove_all(modname); 
           }
           std::filesystem::rename(steamdir, modname);
+          recordinstall(inputCmd, idnumber, idname);
       } else {
           std::cerr << "Error: The directory " << steamdir << " does not exist." << std::endl;
       }
