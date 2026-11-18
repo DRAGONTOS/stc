@@ -23,6 +23,7 @@ void getHttp(cmd *inputCmd, std::string url) {
 
   // set the options
   curl_easy_setopt(meow, CURLOPT_URL, url.c_str());
+  curl_easy_setopt(meow, CURLOPT_ACCEPT_ENCODING, "");
   curl_easy_setopt(meow, CURLOPT_WRITEFUNCTION, appendCurlOutputToString);
   curl_easy_setopt(meow, CURLOPT_WRITEDATA, &woof);
 
