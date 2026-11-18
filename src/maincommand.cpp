@@ -553,7 +553,7 @@ void maincommand(cmd *inputCmd) {
         std::cout << "Installing collection: " << ui.bold << title << ui.reset << "\nDestination: " << ui.cyan << inputCmd->dir << ui.reset << std::endl;
         std::cout << "\n" << ui.cyan << "Collection Summary:" << ui.reset << "\n Installing:         " << ui.green << totalmods << " Mods" << ui.reset << std::endl;
      } else {
-        std::cout << "Installing mod: " << ui.bold << title << ui.reset << "\n";
+        std::cout << "Installing mod: " << ui.bold << title << ui.reset << "\nDestination: " << ui.cyan << inputCmd->dir << ui.reset << "\n";
      }
      
      // y\n prompt

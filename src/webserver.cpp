@@ -29,6 +29,8 @@ static int jobtotal = 0;
 static int jobfinished = 0;
 static int jobtimedout = 0;
 static int joberrored = 0;
+// the folder the last web job installed into or updated, the zip download aims there when the page gives no folder
+static std::string jobdir;
 
 // escapes a string for a json response
 static std::string jsonescape(const std::string& text) {
@@ -202,6 +204,8 @@ static void runjob(std::string mode, std::vector<std::string> args) {
                 jobtitle = line.substr(23);
             } else if (line.find("Installing mod: ") == 0) {
                 jobtitle = line.substr(16);
+            } else if (line.find("Destination: ") == 0) {
+                jobdir = line.substr(13);
             } else if (line.find("Installing:         ") == 0) {
                 try {
                     jobtotal = std::stoi(line.substr(20));
@@ -495,7 +499,8 @@ static void handle(int fd, const std::string& homedir) {
         }
 
         std::string dir = jsonvalue(body, "dir");
-        if (dir.empty()) {
+        bool dirgiven = !dir.empty();
+        if (!dirgiven) {
             dir = homedir + "/.local/share/stc/mods";
         }
 
@@ -503,11 +508,7 @@ static void handle(int fd, const std::string& homedir) {
         std::string mode;
         if (path == "/update") {
             mode = "update";
-            if (!dir.empty()) {
-                args = {"-u", dir};
-            } else {
-                args = {"-u"};
-            }
+            args = dirgiven ? std::vector<std::string>{"-u", dir} : std::vector<std::string>{"-u"};
         } else {
             mode = "install";
             std::string id = jsonvalue(body, "id");
@@ -541,6 +542,9 @@ static void handle(int fd, const std::string& homedir) {
             jobfinished = 0;
             jobtimedout = 0;
             joberrored = 0;
+            if (dirgiven || mode == "install") {
+                jobdir = dir;
+            }
         }
         std::thread(runjob, mode, args).detach();
         sendresponse(fd, "200 OK", "application/json", "{\"started\":true}");
@@ -548,6 +552,10 @@ static void handle(int fd, const std::string& homedir) {
     }
     if (method == "GET" && path == "/export") {
         std::string dir = queryvalue(query, "dir");
+        if (dir.empty()) {
+            std::lock_guard<std::mutex> guard(joblock);
+            dir = jobdir;
+        }
         if (dir.empty()) {
             dir = homedir + "/.local/share/stc/mods";
         }
