@@ -51,16 +51,50 @@ makepkg -si PKGBUILD
 
 # Usage
 
-## Help message
-
 ```
 usage:  Steam Collector [flags] [<command> [args]]
-LISTING COMMANDS:
+LISTING FLAGS:
     -c:           Install a collection.
     -m:           Install a specific mod.
+    -h:           For the entire help msg.
+    -u:           Update steamcmd and the mods in a folder.
 ```
 
-# Contributors
+Install a collection or a single mod:
 
-- DRAGONTOS
-- maukkis
+```
+stc -c <collectionid> <gameid> [dir]
+stc -m <modid> <gameid> [dir]
+```
+
+Login is only needed for games that gate their workshop, pass a username and a
+password between the id and the gameid:
+
+```
+stc -c <collectionid> <user> <pass> <gameid> [dir]
+```
+
+The gameid and the ids must be numbers, the dir defaults to the mods folder.
+
+# Updating
+
+```
+stc -u [dir]
+```
+
+This checks steamcmd for updates, re-downloads every mod recorded in that
+folder's `.stc-manifest` into the same named folder it was installed to, and
+pulls and rebuilds a git checkout of stc itself. Packaged installs get pointed
+at their package manager instead. Updates run anonymously, so mods behind a
+login are reported as failed, rerun your install command with your credentials
+for those.
+
+Every successful install appends a line with the gameid, the mod id and the
+folder name to `.stc-manifest` inside the destination folder, that is the
+registry `-u` reads.
+
+# Where things live
+
+- `~/.local/share/stc/Steam`: the steamcmd install, created on first use.
+- `~/.local/share/stc/mods`: the default download folder.
+- `~/.cache`: the steamcmd download cache, cleared on every run.
