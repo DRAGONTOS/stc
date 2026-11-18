@@ -58,6 +58,8 @@ LISTING FLAGS:
     -m:           Install a specific mod.
     -h:           For the entire help msg.
     -u:           Update steamcmd and the mods in a folder.
+    -z:           Pack the installed mods of a folder into a zip.
+    -i:           Import a zip of mods and register them for updates.
 ```
 
 Install a collection or a single mod:
@@ -92,6 +94,20 @@ install command with your credentials for those.
 Every successful install appends a line with the gameid, the mod id and the
 folder name to `.stc-manifest` inside the destination folder, that is the
 registry `-u` reads.
+
+# Zips
+
+```
+stc -z [dir] [zipfile]
+stc -i <zipfile> [dir]
+```
+
+`-z` packs the mods a folder tracks, its `.stc-manifest` and an `install.sh`
+script into a zip, which the website can hand out and take back. The script
+installs the extracted mods into a dir and registers them, so a zip is a full
+backup. `-i` imports such a zip: it restores the mod folders into the dir and
+merges the registry entries, so `stc -u` keeps updating those mods afterwards.
+Importing the same zip twice does not duplicate anything.
 
 # Where things live
 

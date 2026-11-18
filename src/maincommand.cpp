@@ -145,12 +145,6 @@ steamproc spawnSteamcmd(const cmd *inputCmd, const std::string& commands, bool q
 }
 
 // a mod recorded in a .stc-manifest
-struct trackedmod {
-    std::string gameid;
-    std::string modid;
-    std::string folder;
-};
-
 // colors for terminal output, all empty when stdout is not a terminal
 struct uicolors {
     bool tty = false;

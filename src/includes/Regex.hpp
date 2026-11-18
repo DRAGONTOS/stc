@@ -29,6 +29,13 @@ int timedout  = 0;
 int errors    = 0;
 };
 
+// a mod recorded in a .stc-manifest
+struct trackedmod {
+    std::string gameid;
+    std::string modid;
+    std::string folder;
+};
+
 void Regex(cmd *inputCmd);
 void Modname(cmd *inputCmd, size_t index);
 void filerestort(cmd *inputCmd, std::string idnumber, std::string idname);

@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -6,6 +7,7 @@
 #include "includes/Strings.hpp"
 #include "includes/Regex.hpp"
 #include "includes/maincommand.hpp"
+#include "includes/zip.hpp"
 #include <netdb.h>
 #include <arpa/inet.h>
 
@@ -103,6 +105,25 @@ int main(int argc, char **argv, char **envp) {
         }
 
         break;
+      }
+
+      // pack the installed mods of a folder into a zip
+      if (ARGS[i] == "-z") {
+        std::string dir = (argc >= 3 && argv[2][0] != '-') ? argv[2] : std::string(inputCmd.userHome) + "/.local/share/stc/mods";
+        std::string zipfile = (argc >= 4 && argv[3][0] != '-') ? argv[3] : std::filesystem::path(dir).lexically_normal().filename().string() + ".zip";
+        exportzip(dir, zipfile);
+        return 0;
+      }
+
+      // import a zip of mods and register it for updates
+      if (ARGS[i] == "-i") {
+        if (argc < 3 || argv[2][0] == '-') {
+          std::cerr << USAGE;
+          return 1;
+        }
+        std::string dir = (argc >= 4 && argv[3][0] != '-') ? argv[3] : std::string(inputCmd.userHome) + "/.local/share/stc/mods";
+        importzip(argv[2], dir);
+        return 0;
       }
 
       // modid

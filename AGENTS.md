@@ -13,6 +13,7 @@ Cross-session handoff notes for this project live in `~/.local/share/agents/stc-
 | Scrape | `src/Regex.cpp` | Walks the workshop page line by line with `find`/`substr`, collects `+workshop_download_item <gameid> <id> \` lines into `inputCmd->ids` and counts `totalmods`. `workshoptitle` and `jsontitle` are the shared scrapers every caller uses; `filerestort` moves a finished download into its named folder and appends it to the destination's `.stc-manifest`. Despite the name, no `std::regex` is involved. |
 | Steamcmd driver | `src/maincommand.cpp` | Holds the `cmd` struct, `setup` (steamcmd install + mods dir), `spawnSteamcmd` (spawns steamcmd with an argument array and pipes — no shell string; the login password and download commands go over stdin, so they never show in `ps`), `execAndDisplay` (counts successes, timeouts and errors; on a terminal it draws a dnf-style in-place status line with a bar and percents read live from steamcmd's `\r` progress, when piped it prints one line per finished item) and `maincommand` (copies results to the target dir). |
 | UI strings | `src/includes/Strings.hpp` | `USAGE` and `HELP` raw string literals. Keep them in sync with the flags in `main.cpp`. |
+| Zips | `src/zip.cpp` | `exportzip` packs a dir's tracked mods, its `.stc-manifest` and a self-contained `install.sh` into a zip (`stc -z`); `importzip` extracts a zip into a dir, merges its manifest entries without duplicates and skips `install.sh` (`stc -i`). Both on libarchive, no new dependency. |
 | Version | `props.json` | Single `"version"` key, read by CMake at configure time. Bump it for every release, and update the `line-count` file in the same commit. |
 
 ## Build and install
@@ -35,6 +36,8 @@ makepkg -si PKGBUILD       # Arch, needs multilib
 | `./build/stc -c <collectionid> <gameid> [dir]` | Download a collection. Login args (`user pass` before `gameid`) are optional. |
 | `./build/stc -m <modid> <gameid> [dir]` | Download a single mod. Same arg shapes as `-c`. |
 | `./build/stc -u [dir]` | Refresh steamcmd. With a dir, also re-download the mods tracked in `<dir>/.stc-manifest` into their recorded folders and pull+rebuild a git checkout. |
+| `./build/stc -z [dir] [zipfile]` | Pack the dir's tracked mods, its manifest and an `install.sh` into a zip. Defaults: the mods folder, `<folder>.zip` in the cwd. |
+| `./build/stc -i <zipfile> [dir]` | Import a zip: restore its mod folders into the dir and merge its manifest entries for `-u`. Duplicate ids are skipped; `install.sh` is not extracted. |
 
 Every install appends `<gameid> <modid> <foldername>` lines to `.stc-manifest` inside the destination folder (see `recordinstall` in `src/Regex.cpp`); `-u` reads that registry to update mods in place. Passwords are never stored, so `-u` updates anonymously and reports what needs credentials.
 
