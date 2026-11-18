@@ -68,7 +68,14 @@ steamproc spawnSteamcmd(const cmd *inputCmd, const std::string& commands) {
     if (!inputCmd->pass.empty()) {
         stdinlines += inputCmd->pass + "\n";
     }
-    stdinlines += commands;
+    // the stdin console takes commands without the '+' prefix the argv form uses
+    std::istringstream lines(commands);
+    for (std::string line; std::getline(lines, line); ) {
+        if (!line.empty() && line[0] == '+') {
+            line.erase(0, 1);
+        }
+        stdinlines += line + "\n";
+    }
 
     int outpipe[2];
     int inpipe[2];
