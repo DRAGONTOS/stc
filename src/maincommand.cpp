@@ -43,7 +43,7 @@ void execAndDisplay(cmd *inputCmd, const std::string& cmd, std::atomic<bool>& ru
         if (line.find("ERROR!") != std::string::npos) {
             inputCmd->errors++;
             // tmp fix for errors.
-            std::ofstream meow{"/home/rander/.cache/errors.txt"};
+            std::ofstream meow{std::string(inputCmd->userHome) + "/.cache/errors.txt"};
             meow << "start:\n" + line; 
         }
     }
