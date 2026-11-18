@@ -8,7 +8,7 @@ Cross-session handoff notes for this project live in `~/.local/share/agents/stc-
 
 | Part | Where | Notes |
 |---|---|---|
-| Entry and arg parsing | `src/main.cpp` | Checks the network with `gethostbyname`, then dispatches the flags: `-c` collection, `-m` mod, `-h` help, `-u` update (in progress). Fills the `cmd` struct and calls `Regex` then `maincommand`. |
+| Entry and arg parsing | `src/main.cpp` | Checks the network with `gethostbyname`, then dispatches the flags: `-c` collection, `-m` mod, `-h` help, `-u` update. Fills the `cmd` struct and calls `Regex` then `maincommand`, or `updatecommand` for `-u`. |
 | HTTP | `src/getHttp.cpp` | `getHttp` pulls a workshop page into a string on `inputCmd->source`; `downloadFile` streams a file to disk. Plain curl easy handles, no error category system — errors `throw`. |
 | Scrape | `src/Regex.cpp` | Walks the workshop page line by line with `find`/`substr`, collects `+workshop_download_item <gameid> <id> \` lines into `inputCmd->ids` and counts `totalmods`. Despite the name, no `std::regex` is involved. |
 | Steamcmd driver | `src/maincommand.cpp` | Holds the `cmd` struct, `setup` (steamcmd install + mods dir), `spawnSteamcmd` (spawns steamcmd with an argument array and pipes — no shell string; the login password and download commands go over stdin, so they never show in `ps`), `execAndDisplay` (counts successes and timeouts), `installedmodslist` (matches downloaded ids against the page JSON for titles) and `maincommand` (copies results to the target dir). |
@@ -34,6 +34,9 @@ makepkg -si PKGBUILD       # Arch, needs multilib
 | `make all` | Fresh cmake configure + build into `build/stc`. |
 | `./build/stc -c <collectionid> <gameid> [dir]` | Download a collection. Login args (`user pass` before `gameid`) are optional. |
 | `./build/stc -m <modid> <gameid> [dir]` | Download a single mod. Same arg shapes as `-c`. |
+| `./build/stc -u [dir]` | Refresh steamcmd, re-download the mods tracked in `<dir>/.stc-manifest` into their recorded folders, and pull+rebuild a git checkout. Without a dir it updates the default mods folder. |
+
+Every install appends `<gameid> <modid> <foldername>` lines to `.stc-manifest` inside the destination folder (see `recordinstall` in `src/Regex.cpp`); `-u` reads that registry to update mods in place. Passwords are never stored, so `-u` updates anonymously and reports what needs credentials.
 
 ## Hard rules
 
