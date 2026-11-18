@@ -480,7 +480,6 @@ void maincommand(cmd *inputCmd) {
      //start the threads
         std::vector<std::thread> meowthreads;
         for(size_t nya{0}; nya < inputCmd->sucids.size(); ++nya){
-            inputCmd->totalmods++;
             meowthreads.emplace_back(Modname, inputCmd, nya);
         }
         for (std::thread& meowT : meowthreads) {
@@ -488,7 +487,6 @@ void maincommand(cmd *inputCmd) {
         }
     } else {
         for(size_t nya{0}; nya < inputCmd->sucids.size(); ++nya) {
-            inputCmd->totalmods++;
             Modname(inputCmd, nya);  // Process directly instead of in thread
         }
     }
