@@ -57,7 +57,8 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --title "stc ${{ steps.version.outputs.version }}" \
             --notes "Binary for x86_64 Linux, a deb and an rpm. Build it yourself with make all if your distro is not covered." \
-            --latest
+            --latest \
+          || gh release upload "$GITHUB_REF_NAME" out/* --repo "$GITHUB_REPOSITORY" --clobber
 
       - name: publish the rolling release
         if: github.ref == 'refs/heads/master'
