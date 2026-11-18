@@ -24,18 +24,15 @@ jobs:
 
       - name: build
         run: |
+          # ubuntu's libcurl carries versioned symbols, which bake a CURL_OPENSSL_4 requirement into stc that fedora cannot satisfy; the linker gets a version-stripped copy instead
+          mkdir -p /tmp/nover
+          libcurlfile=$(find /usr/lib -name 'libcurl.so.4' | head -1)
+          cp "$libcurlfile" /tmp/nover/libcurl.so
+          objcopy -R .gnu.version -R .gnu.version_r -R .gnu.version_d /tmp/nover/libcurl.so
           cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -S . -B ./build -G Ninja \
-            -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14
+            -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14 \
+            -DCMAKE_EXE_LINKER_FLAGS="-L/tmp/nover"
           cmake --build ./build
-          sudo apt-get install -y patchelf
-          if ! patchelf --help 2>&1 | grep -q clear-symbol-version; then
-            curl -fsSL -o /tmp/patchelf https://github.com/NixOS/patchelf/releases/download/0.18.1/patchelf-0.18.1-x86_64
-            chmod +x /tmp/patchelf
-            sudo mv /tmp/patchelf /usr/local/bin/patchelf
-          fi
-          for symbol in $(readelf -sW build/stc | awk '$7 == "UND" && $8 ~ /@CURL_OPENSSL_4/ { sub(/@.*/, "", $8); print $8 }' | sort -u); do
-            patchelf --clear-symbol-version "$symbol" build/stc
-          done
           if readelf --version-info build/stc | grep -q CURL_OPENSSL_4; then
             echo "the libcurl symbol version is still baked in"; exit 1
           fi
