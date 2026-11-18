@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <csignal>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -13,6 +14,9 @@
 #include <arpa/inet.h>
 
 int main(int argc, char **argv, char **envp) {
+  // a dead socket or pipe must not take the whole program down
+  signal(SIGPIPE, SIG_IGN);
+
   // checks if there is a internet connection.
   const char *hostname;
   struct hostent *hostinfo;
