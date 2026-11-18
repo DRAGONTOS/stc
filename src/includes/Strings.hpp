@@ -22,5 +22,5 @@ LISTING FLAGS:
     3: Could be the password if required.
     4: The dir to where you want to download the mods.
 
-    For -u the 1. arg is the folder to update, default is the mods folder.
+    For -u an arg is the folder whose mods to update; without an arg only steamcmd is updated.
 )#";

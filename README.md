@@ -82,12 +82,12 @@ The gameid and the ids must be numbers, the dir defaults to the mods folder.
 stc -u [dir]
 ```
 
-This checks steamcmd for updates, re-downloads every mod recorded in that
-folder's `.stc-manifest` into the same named folder it was installed to, and
-pulls and rebuilds a git checkout of stc itself. Packaged installs get pointed
-at their package manager instead. Updates run anonymously, so mods behind a
-login are reported as failed, rerun your install command with your credentials
-for those.
+Without a dir this only checks steamcmd for updates. With a dir it also
+re-downloads every mod recorded in that folder's `.stc-manifest` into the same
+named folder it was installed to, and pulls and rebuilds a git checkout of stc
+itself. Packaged installs get pointed at their package manager instead. Updates
+run anonymously, so mods behind a login are reported as failed, rerun your
+install command with your credentials for those.
 
 Every successful install appends a line with the gameid, the mod id and the
 folder name to `.stc-manifest` inside the destination folder, that is the

@@ -395,11 +395,13 @@ int runwait(const std::vector<std::string>& args) {
     return status;
 }
 
-// -u: refreshes steamcmd, re-downloads the mods tracked in the destination's .stc-manifest into their existing folders and updates a stc git checkout
-void updatecommand(cmd *inputCmd) {
-    struct stat sb;
-    if (stat(inputCmd->dir.c_str(), &sb) != 0 || !S_ISDIR(sb.st_mode)) {
-        inputCmd->dir = std::string(inputCmd->userHome) + "/.local/share/stc/mods";
+// -u: refreshes steamcmd; with a dir given it also re-downloads the mods tracked in the destination's .stc-manifest into their existing folders and updates a stc git checkout
+void updatecommand(cmd *inputCmd, bool everything) {
+    if (everything) {
+        struct stat sb;
+        if (stat(inputCmd->dir.c_str(), &sb) != 0 || !S_ISDIR(sb.st_mode)) {
+            inputCmd->dir = std::string(inputCmd->userHome) + "/.local/share/stc/mods";
+        }
     }
 
     std::cout << "Checking for a steamcmd update..." << std::endl;
@@ -409,6 +411,11 @@ void updatecommand(cmd *inputCmd) {
         std::cout << temp;
     }
     proc.close();
+
+    if (!everything) {
+        std::cout << "Pass a folder to also update the mods tracked in it." << std::endl;
+        return;
+    }
 
     std::ifstream manifest{std::filesystem::path(inputCmd->dir) / ".stc-manifest"};
     if (!manifest) {

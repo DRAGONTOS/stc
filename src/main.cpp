@@ -52,19 +52,11 @@ int main(int argc, char **argv, char **envp) {
 
       // update
       if (ARGS[i] == "-u") {
-        if (argc >= 3 && argv[2][0] != '-') {
+        bool everything = argc >= 3 && argv[2][0] != '-';
+        if (everything) {
           inputCmd.dir = argv[2];
         }
-        updatecommand(&inputCmd);
-        return 0;
-      }
-
-      // update
-      if (ARGS[i] == "-u") {
-        if (argc >= 3 && argv[2][0] != '-') {
-          inputCmd.dir = argv[2];
-        }
-        updatecommand(&inputCmd);
+        updatecommand(&inputCmd, everything);
         return 0;
       }
 

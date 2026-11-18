@@ -34,7 +34,7 @@ makepkg -si PKGBUILD       # Arch, needs multilib
 | `make all` | Fresh cmake configure + build into `build/stc`. |
 | `./build/stc -c <collectionid> <gameid> [dir]` | Download a collection. Login args (`user pass` before `gameid`) are optional. |
 | `./build/stc -m <modid> <gameid> [dir]` | Download a single mod. Same arg shapes as `-c`. |
-| `./build/stc -u [dir]` | Refresh steamcmd, re-download the mods tracked in `<dir>/.stc-manifest` into their recorded folders, and pull+rebuild a git checkout. Without a dir it updates the default mods folder. |
+| `./build/stc -u [dir]` | Refresh steamcmd. With a dir, also re-download the mods tracked in `<dir>/.stc-manifest` into their recorded folders and pull+rebuild a git checkout. |
 
 Every install appends `<gameid> <modid> <foldername>` lines to `.stc-manifest` inside the destination folder (see `recordinstall` in `src/Regex.cpp`); `-u` reads that registry to update mods in place. Passwords are never stored, so `-u` updates anonymously and reports what needs credentials.
 
