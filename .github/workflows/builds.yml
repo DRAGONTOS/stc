@@ -33,7 +33,12 @@ jobs:
             chmod +x /tmp/patchelf
             sudo mv /tmp/patchelf /usr/local/bin/patchelf
           fi
-          patchelf --clear-symbol-version CURL_OPENSSL_4 build/stc
+          for symbol in $(readelf -sW build/stc | awk '$7 == "UND" && $8 ~ /@CURL_OPENSSL_4/ { sub(/@.*/, "", $8); print $8 }' | sort -u); do
+            patchelf --clear-symbol-version "$symbol" build/stc
+          done
+          if readelf --version-info build/stc | grep -q CURL_OPENSSL_4; then
+            echo "the libcurl symbol version is still baked in"; exit 1
+          fi
           cd build
           cpack -G DEB
           cpack -G RPM
