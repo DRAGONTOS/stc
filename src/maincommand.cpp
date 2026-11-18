@@ -16,7 +16,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include <mutex>
 #include "includes/Regex.hpp"
 #include "includes/getHttp.hpp"
 
@@ -130,32 +129,73 @@ steamproc spawnSteamcmd(const cmd *inputCmd, const std::string& commands) {
     return proc;
 }
 
-// shows results
-void execAndDisplay(cmd *inputCmd, const std::string& commands) {
+// a mod recorded in a .stc-manifest
+struct trackedmod {
+    std::string gameid;
+    std::string modid;
+    std::string folder;
+};
+
+// cuts the workshop item id out of a steamcmd download line, empty when the line has none
+std::string itemid(const std::string& line, const std::string& tail) {
+    std::size_t itemPos = line.find(" item ");
+    if (itemPos == std::string::npos) {
+        return "";
+    }
+    std::size_t endPos = line.find(tail, itemPos);
+    if (endPos == std::string::npos) {
+        return "";
+    }
+    return line.substr(itemPos + 6, endPos - (itemPos + 6));
+}
+
+// shows the steamcmd output live, counts successes, timeouts and errors, and names the items from the workshop page data or the tracked manifest
+void execAndDisplay(cmd *inputCmd, const std::string& commands, const std::string& sourcefile, const std::string& collectionid, const std::string& total, const std::vector<trackedmod>& knownmods = {}) {
     char temp[128];
     steamproc proc = spawnSteamcmd(inputCmd, commands);
+    int totalmods = 1;
 
     while (proc.out != nullptr && fgets(temp, sizeof(temp), proc.out) != nullptr) {
-        std::string line(temp);  
+        std::string line(temp);
 
-        // checks for success.
-        if (line.find("Success") != std::string::npos) {
-            inputCmd->successes++;
-            inputCmd->sucids.push_back( line + "\n");
-            std::cout << line << std::endl;
-        }
-
-        // checks for timed out ones.
+        // counts for the summary
         if (line.find("Timeout") != std::string::npos) {
             inputCmd->timedout++;
         }
-
-        // checks for errors.
         if (line.find("ERROR!") != std::string::npos) {
             inputCmd->errors++;
             // tmp fix for errors.
             std::ofstream meow{std::string(inputCmd->userHome) + "/.cache/errors.txt", std::ios::app};
             meow << line;
+        }
+
+        // names the downloaded items
+        if (line.find("Download") != std::string::npos && (line.find("Success") != std::string::npos || line.find("ERROR") != std::string::npos)) {
+            bool ok = line.find("Success") != std::string::npos;
+            if (ok) {
+                inputCmd->successes++;
+                inputCmd->sucids.push_back(line + "\n");
+            }
+
+            std::string modId = itemid(line, ok ? " to " : " failed ");
+            std::string idname;
+            for (const trackedmod& known : knownmods) {
+                if (known.modid == modId) {
+                    idname = known.folder;
+                    break;
+                }
+            }
+            if (idname.empty()) {
+                idname = collectionid.empty() ? workshoptitle(sourcefile) : jsontitle(sourcefile, modId);
+            }
+
+            const std::string& label = ok ? "Successfully downloaded: " : "Error downloading: ";
+            if (!collectionid.empty()) {
+                std::cout << "[" << totalmods << "/" << total << "] " << label << idname << std::endl;
+                totalmods++;
+            } else {
+                std::cout << label << idname << std::endl;
+            }
         }
     }
     proc.close();
@@ -219,80 +259,6 @@ void setup(const std::string& dirname) {
     mkdir(moddir.c_str(), 0777);
 }
 
-void installedmodslist(const cmd *inputCmd, const std::string& commands, const std::string& sourcefile, const std::string& collectionid, const std::string& total) {
-    int totalmods = 1;
-
-    steamproc proc = spawnSteamcmd(inputCmd, commands);
-
-    char buffer[256];
-    while (proc.out != nullptr && fgets(buffer, sizeof(buffer), proc.out) != nullptr) {
-
-        //strings
-        std::string line;
-        std::string downloaderror;
-        std::string downloadsuccess;
-
-        std::istringstream inputStream(buffer);
-        while (std::getline(inputStream, line)) {
-        if (line.find("Download") != std::string::npos) {
-        auto response = line.find("Success") != std::string::npos ? downloadsuccess = "Successfully downloaded: " 
-                      : (line.find("ERROR") != std::string::npos ? downloaderror = "Error downloading: " : "");
-
-        // if success trim
-        if (!downloadsuccess.empty()) {
-            std::string successidname;
-            std::string successLine = line; 
-
-            // Extract mod ID (e.g. "1508850027")
-            size_t itemPos = successLine.find(" item ");
-            size_t toPos   = successLine.find(" to ");
-            
-            if (itemPos != std::string::npos && toPos != std::string::npos && toPos > itemPos) {
-                // Calculate positions correctly
-                size_t idStart    = itemPos + 6; // Skip " item "
-                size_t idLength   = toPos - idStart;
-                std::string modId = successLine.substr(idStart, idLength);
-
-                if (!collectionid.empty()) {
-                    successidname = jsontitle(sourcefile, modId);
-                    std::cout << "[" << totalmods << "/" << total << "] " << downloadsuccess << successidname << std::endl;
-                    totalmods++;
-                } else {
-                    successidname = workshoptitle(sourcefile);
-                    std::cout << downloadsuccess << successidname << std::endl;
-                }
-            }
-        }
-
-        // if error trim
-        if (!downloaderror.empty()) {
-            std::string failedidname;
-            std::string errorLine = line; 
-
-            // Extract failed mod ID (e.g. "818773962")
-            size_t itemPos    = errorLine.find(" item ");
-            size_t failedPos  = errorLine.find(" failed ");
-            
-            if (itemPos != std::string::npos && failedPos != std::string::npos) {
-                std::string modId = errorLine.substr(
-                    itemPos + 6, // Skip " item "
-                    failedPos - (itemPos + 6) // Length until " failed "
-                );
-                if (!collectionid.empty()) {
-                    failedidname = jsontitle(sourcefile, modId);
-                    std::cout << "[" << totalmods << "/" << total << "] " << downloaderror << failedidname << std::endl;
-                } else {
-                    failedidname = workshoptitle(sourcefile);
-                    std::cout << downloaderror << failedidname << std::endl;
-                }
-            }
-            }
-        }
-    }
-    }
-    proc.close();
-}
-
 // main function
 void maincommand(cmd *inputCmd) {
   //setup for steamcmd
@@ -303,7 +269,6 @@ void maincommand(cmd *inputCmd) {
   std::filesystem::remove_all(std::string(inputCmd->userHome) + "/.cache/steamcmd_linux.tar.gz");
 
   std::string sourcefile   = inputCmd->source; // needed for some void functions
-  std::string collectionid = inputCmd->collectionid;
 
   // the steamcmd stdin commands; the password, if any, is added by spawnSteamcmd
   std::string commands;
@@ -372,12 +337,7 @@ void maincommand(cmd *inputCmd) {
      }
      std::cout << std::endl;
 
-     std::thread installedmods([&inputCmd, &commands, &sourcefile, &collectionid, &totalmods]() {
-     installedmodslist(inputCmd, commands, sourcefile, collectionid, totalmods);
-     });
-
-     installedmods.join();
-     execAndDisplay(inputCmd, commands);
+     execAndDisplay(inputCmd, commands, sourcefile, inputCmd->collectionid, totalmods);
 
      std::cout << "\n=======================================================================" << std::flush;
   } catch (const std::runtime_error& e) {
@@ -435,13 +395,6 @@ int runwait(const std::vector<std::string>& args) {
     return status;
 }
 
-// a mod recorded in a .stc-manifest
-struct trackedmod {
-    std::string gameid;
-    std::string modid;
-    std::string folder;
-};
-
 // -u: refreshes steamcmd, re-downloads the mods tracked in the destination's .stc-manifest into their existing folders and updates a stc git checkout
 void updatecommand(cmd *inputCmd) {
     struct stat sb;
@@ -492,7 +445,7 @@ void updatecommand(cmd *inputCmd) {
             }
             commands += "+quit\n";
 
-            execAndDisplay(inputCmd, commands);
+            execAndDisplay(inputCmd, commands, "", "", "", tracked);
 
             for (const trackedmod& mod : tracked) {
                 inputCmd->gameid = mod.gameid;
