@@ -59,6 +59,15 @@ int main(int argc, char **argv, char **envp) {
         return 0;
       }
 
+      // update
+      if (ARGS[i] == "-u") {
+        if (argc >= 3 && argv[2][0] != '-') {
+          inputCmd.dir = argv[2];
+        }
+        updatecommand(&inputCmd);
+        return 0;
+      }
+
       // collectionid
       if (ARGS[i] == "-c") {
         if (argc < 3 || argv[2][0] == '-') {
@@ -76,18 +85,7 @@ int main(int argc, char **argv, char **envp) {
           if (argc == 7) {
             inputCmd.dir = ARGS[1 + 5];
           }
-
-          try {
-            getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid});
-          } catch (const std::exception& e) {
-            std::cerr << e.what();
-            return 1;
-          }
-
-          break;
-        }
-
-        if (argc == 4 || argc == 5) {
+        } else if (argc == 4 || argc == 5) {
 
           inputCmd.collectionid  = ARGS[1 + 1];
           inputCmd.gameid        = ARGS[1 + 2];
@@ -95,19 +93,24 @@ int main(int argc, char **argv, char **envp) {
           if (argc == 5) {
             inputCmd.dir = ARGS[1 + 3];
           }
-
-          try {
-            getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid});
-          } catch (const std::exception& e) {
-            std::cerr << e.what();
-            return 1;
-          }
-
-          break;
         } else {
           std::cerr << HELP;
           return 1;
         }
+
+        if (inputCmd.gameid.find_first_not_of("0123456789") != std::string::npos) {
+          std::cerr << "The gameid must be a number. To log in, pass both a username and a password.\n";
+          return 1;
+        }
+
+        try {
+          getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.collectionid});
+        } catch (const std::exception& e) {
+          std::cerr << e.what();
+          return 1;
+        }
+
+        break;
       }
 
       // modid
@@ -127,18 +130,7 @@ int main(int argc, char **argv, char **envp) {
           if (argc == 7) {
             inputCmd.dir = ARGS[1 + 5];
           }
-
-          try {
-            getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.modid});
-          } catch (const std::exception& e) {
-            std::cerr << e.what();
-            return 1;
-          }
-
-          break;
-        }
-
-        if (argc == 4 || argc == 5) {
+        } else if (argc == 4 || argc == 5) {
 
           inputCmd.modid   = ARGS[1 + 1];
           inputCmd.gameid  = ARGS[1 + 2];
@@ -146,19 +138,24 @@ int main(int argc, char **argv, char **envp) {
           if (argc == 5) {
             inputCmd.dir = ARGS[1 + 3];
           }
-
-          try {
-            getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.modid});
-          } catch (const std::exception& e) {
-            std::cerr << e.what();
-            return 1;
-          }
-
-          break;
         } else {
           std::cerr << HELP;
           return 1;
         }
+
+        if (inputCmd.gameid.find_first_not_of("0123456789") != std::string::npos) {
+          std::cerr << "The gameid must be a number. To log in, pass both a username and a password.\n";
+          return 1;
+        }
+
+        try {
+          getHttp(&inputCmd, std::string{"https://steamcommunity.com/sharedfiles/filedetails/?id=" + inputCmd.modid});
+        } catch (const std::exception& e) {
+          std::cerr << e.what();
+          return 1;
+        }
+
+        break;
       } else {
         std::cerr << USAGE;
         return 1;

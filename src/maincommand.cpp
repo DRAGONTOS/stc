@@ -151,7 +151,7 @@ std::string itemid(const std::string& line, const std::string& tail) {
 
 // shows the steamcmd output live, counts successes, timeouts and errors, and names the items from the workshop page data or the tracked manifest
 void execAndDisplay(cmd *inputCmd, const std::string& commands, const std::string& sourcefile, const std::string& collectionid, const std::string& total, const std::vector<trackedmod>& knownmods = {}) {
-    char temp[128];
+    char temp[1024];
     steamproc proc = spawnSteamcmd(inputCmd, commands);
     int totalmods = 1;
 
@@ -404,7 +404,7 @@ void updatecommand(cmd *inputCmd) {
 
     std::cout << "Checking for a steamcmd update..." << std::endl;
     steamproc proc = spawnSteamcmd(inputCmd, "+quit\n");
-    char temp[128];
+    char temp[1024];
     while (proc.out != nullptr && fgets(temp, sizeof(temp), proc.out) != nullptr) {
         std::cout << temp;
     }
